@@ -7,15 +7,15 @@
     situation: 'melee',
     melee: {
       attack: 4, defense: 8,
-      atkGeneral: false, cav: 'none', phalanx: false, arrowTip: false, spears: false, onrush: false,
+      phalanx: false, arrowTip: false, spears: false, onrush: false,
       atkWounds: 0, atkOfficerLost: false, atkBroken: false,
-      defGeneral: false, defHero: false, formation: 'none', hit: 'front',
+      defHero: false, formation: 'none', hit: 'front',
       multiAttackers: false, forcedMarch: false, defOfficerLost: false,
     },
     ranged: {
       attack: 4, defense: 8,
-      atkGeneral: false, atkWounds: 0, atkOfficerLost: false, losBlocked: false,
-      defGeneral: false, defHero: false, formation: 'none', hit: 'front',
+      atkWounds: 0, atkOfficerLost: false, losBlocked: false,
+      defHero: false, formation: 'none', hit: 'front',
       forcedMarch: false, defOfficerLost: false,
     },
     morale: {
@@ -29,17 +29,17 @@
 
   function resetMelee() {
     Object.assign(state.melee, {
-      atkGeneral: false, cav: 'none', phalanx: false, arrowTip: false, spears: false, onrush: false,
+      phalanx: false, arrowTip: false, spears: false, onrush: false,
       atkWounds: 0, atkOfficerLost: false, atkBroken: false,
-      defGeneral: false, defHero: false, formation: 'none', hit: 'front',
+      defHero: false, formation: 'none', hit: 'front',
       multiAttackers: false, forcedMarch: false, defOfficerLost: false,
     });
   }
 
   function resetRanged() {
     Object.assign(state.ranged, {
-      atkGeneral: false, atkWounds: 0, atkOfficerLost: false, losBlocked: false,
-      defGeneral: false, defHero: false, formation: 'none', hit: 'front',
+      atkWounds: 0, atkOfficerLost: false, losBlocked: false,
+      defHero: false, formation: 'none', hit: 'front',
       forcedMarch: false, defOfficerLost: false,
     });
   }
@@ -88,9 +88,6 @@
 
   function meleeEff(m) {
     let atk = m.attack;
-    if (m.atkGeneral) atk += 1;
-    if (m.cav === 'flank') atk += 1;
-    if (m.cav === 'rear') atk += 2;
     if (m.phalanx) atk += 1;
     if (m.arrowTip) atk += 1;
     if (m.spears) atk += 1;
@@ -100,7 +97,6 @@
     if (m.atkBroken) atk -= 1;
 
     let def = m.defense;
-    if (m.defGeneral) def += 1;
     if (m.defHero) def += 1;
     if (m.formation === 'square') def += 2;
     if (m.formation === 'wallOfShields') def += 1;
@@ -114,13 +110,11 @@
 
   function rangedEff(r) {
     let atk = r.attack;
-    if (r.atkGeneral) atk += 1;
     atk -= Math.floor(r.atkWounds / 3);
     if (r.atkOfficerLost) atk -= 1;
     if (r.losBlocked) atk -= 1;
 
     let def = r.defense;
-    if (r.defGeneral) def += 1;
     if (r.defHero) def += 1;
     if (r.formation === 'square') def -= 1;
     if (r.formation === 'wallOfShields') def += 1;
@@ -221,23 +215,13 @@
       <div class="card">
         <h3 class="serif">Modifikátory útočníka</h3>
 
-        <div class="choice-group">
-          <span class="choice-label">Jízda útočí na pěchotu</span>
-          <div class="choice-buttons">
-            ${choiceBtn('Ne', 'melee', 'cav', 'none')}
-            ${choiceBtn('Z boku +1', 'melee', 'cav', 'flank')}
-            ${choiceBtn('Zezadu +2', 'melee', 'cav', 'rear')}
-          </div>
-        </div>
-
         ${sliderBlock('Ztráty jednotky (zranění)', 'melee', 'atkWounds', 0, 9, '−1 za každé 3 zranění')}
 
-        ${modRow('Jednotka má generála', 'melee', 'atkGeneral', 1)}
         ${modRow('Falanga (Phalanx)', 'melee', 'phalanx', 1)}
-        ${modRow('Hrot šípu při výpadu (Arrow Tip)', 'melee', 'arrowTip', 1)}
-        ${modRow('Kopí proti jízdě, čelně (Spears)', 'melee', 'spears', 1)}
-        ${modRow('Nájezd proti pěchotě při výpadu (Onrush)', 'melee', 'onrush', 1)}
-        ${modRow('Jednotka přišla o důstojníky', 'melee', 'atkOfficerLost', -1)}
+        ${modRow('Klín při nájezdu (Arrowhead)', 'melee', 'arrowTip', 1)}
+        ${modRow('Kopiníci proti jízdě (Spearmen)', 'melee', 'spears', 1)}
+        ${modRow('Výpad na pěchotu při nájezdu (Lunge)', 'melee', 'onrush', 1)}
+        ${modRow('Jednotka přišla o důstojníky (No Officer)', 'melee', 'atkOfficerLost', -1)}
         ${modRow('Jednotka je rozvrácená (Broken)', 'melee', 'atkBroken', -1)}
 
         <button type="button" class="reset-btn" data-action="reset" data-section="melee">Resetovat modifikátory</button>
@@ -264,11 +248,10 @@
           </div>
         </div>
 
-        ${modRow('Jednotka má generála', 'melee', 'defGeneral', 1)}
         ${modRow('Jednotka má hrdinu (Hero)', 'melee', 'defHero', 1)}
-        ${modRow('Útočí víc jednotek najednou', 'melee', 'multiAttackers', -1)}
-        ${modRow('Nucený pochod (Forced March)', 'melee', 'forcedMarch', -2)}
-        ${modRow('Jednotka přišla o důstojníky', 'melee', 'defOfficerLost', -1)}
+        ${modRow('Útočí víc jednotek najednou (Other Enemies)', 'melee', 'multiAttackers', -1)}
+        ${modRow('Nucený pochod (Marching)', 'melee', 'forcedMarch', -2)}
+        ${modRow('Jednotka přišla o důstojníky (No Officer)', 'melee', 'defOfficerLost', -1)}
       </div>
 
       <div class="card">
@@ -294,8 +277,7 @@
       <div class="card">
         <h3 class="serif">Modifikátory střelce</h3>
         ${sliderBlock('Ztráty jednotky (zranění)', 'ranged', 'atkWounds', 0, 9, '−1 za každé 3 zranění')}
-        ${modRow('Jednotka má generála', 'ranged', 'atkGeneral', 1)}
-        ${modRow('Jednotka přišla o důstojníky', 'ranged', 'atkOfficerLost', -1)}
+        ${modRow('Jednotka přišla o důstojníky (No Officer)', 'ranged', 'atkOfficerLost', -1)}
         ${modRow('Zastřený výhled (Line of Sight)', 'ranged', 'losBlocked', -1)}
         <button type="button" class="reset-btn" data-action="reset" data-section="ranged">Resetovat modifikátory</button>
       </div>
@@ -318,10 +300,9 @@
             ${choiceBtn('Zezadu −2', 'ranged', 'hit', 'rear')}
           </div>
         </div>
-        ${modRow('Jednotka má generála', 'ranged', 'defGeneral', 1)}
         ${modRow('Jednotka má hrdinu (Hero)', 'ranged', 'defHero', 1)}
-        ${modRow('Nucený pochod (Forced March)', 'ranged', 'forcedMarch', -2)}
-        ${modRow('Jednotka přišla o důstojníky', 'ranged', 'defOfficerLost', -1)}
+        ${modRow('Nucený pochod (Marching)', 'ranged', 'forcedMarch', -2)}
+        ${modRow('Jednotka přišla o důstojníky (No Officer)', 'ranged', 'defOfficerLost', -1)}
       </div>
 
       <div class="card">
@@ -360,13 +341,13 @@
             ${choiceBtn('Zezadu −2', 'morale', 'hit', 'rear')}
           </div>
         </div>
-        ${modRow('Generál přítomen / v dosahu vlivu', 'morale', 'general', 1)}
-        ${modRow('Hrdina v jednotce', 'morale', 'hero', 1)}
-        ${modRow('Generál padl nebo uprchl', 'morale', 'generalLost', -1)}
-        ${modRow('Nepřítel vyvolává hrůzu (Terror)', 'morale', 'terror', -1)}
-        ${modRow('Nucený pochod (Forced March)', 'morale', 'forcedMarch', -2)}
-        ${modRow('Útočí víc nepřátelských jednotek', 'morale', 'multiAttackers', -1)}
-        ${modRow('Jednotka přišla o důstojníky', 'morale', 'officerLost', -1)}
+        ${modRow('V dosahu vlivu generála', 'morale', 'general', 1)}
+        ${modRow('Jednotka má hrdinu (Hero)', 'morale', 'hero', 1)}
+        ${modRow('Generál zraněn, padl nebo prchá', 'morale', 'generalLost', -1)}
+        ${modRow('Nepřítel vyvolává strach (Fear)', 'morale', 'terror', -1)}
+        ${modRow('Nucený pochod (Marching)', 'morale', 'forcedMarch', -2)}
+        ${modRow('Útočí víc nepřátelských jednotek (Other Enemies)', 'morale', 'multiAttackers', -1)}
+        ${modRow('Jednotka přišla o důstojníky (No Officer)', 'morale', 'officerLost', -1)}
         ${modRow('Jednotka je rozvrácená (Broken)', 'morale', 'broken', -1)}
         <button type="button" class="reset-btn" data-action="reset" data-section="morale">Resetovat modifikátory</button>
       </div>
