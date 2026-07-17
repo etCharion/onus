@@ -3,6 +3,12 @@
 
   const root = document.getElementById('app');
 
+  const colors = {
+    red: '#8c2a22', redLight: '#c96a5c',
+    green: '#2f5d3a', greenLight: '#5f9a6c',
+    gold: '#9c7327', goldLight: '#e3c26a',
+  };
+
   const state = {
     situation: 'melee',
     melee: {
@@ -57,8 +63,8 @@
     if (needed <= 1) zone = 'hit'; else if (needed >= 7) zone = 'miss';
     return { needed, zone };
   }
-  function zoneColor(zone) { return zone === 'hit' ? '#3f7a4f' : zone === 'miss' ? '#b0473a' : '#a97d3b'; }
-  function zoneBg(zone) { return zone === 'hit' ? '#e3ede2' : zone === 'miss' ? '#f3e0dc' : '#f1e9d8'; }
+  function zoneColor(zone) { return zone === 'hit' ? colors.green : zone === 'miss' ? colors.red : colors.gold; }
+  function zoneBg(zone) { return zone === 'hit' ? '#e2ead9' : zone === 'miss' ? '#f4ded9' : '#f6ecd4'; }
   function zoneText(info) {
     if (info.zone === 'hit') return 'Automatický zásah';
     if (info.zone === 'miss') return 'Automatické minutí';
@@ -78,7 +84,7 @@
           needed: info.needed,
           bg: zoneBg(info.zone),
           fg: zoneColor(info.zone),
-          border: isHi ? '2px solid #241f1a' : '1px solid #e3d8bc',
+          border: isHi ? '2px solid #2a2018' : '1px solid #ecdfc0',
         });
       }
       rows.push({ defense: d, cells });
@@ -146,7 +152,7 @@
     const arr = [];
     for (let v = 1; v <= 6; v++) {
       const pass = v === 1 || v <= target;
-      arr.push({ v, bg: pass ? '#e3ede2' : '#f3e0dc', fg: pass ? '#3f7a4f' : '#b0473a' });
+      arr.push({ v, bg: pass ? '#e2ead9' : '#f4ded9', fg: pass ? colors.green : colors.red });
     }
     return arr;
   }
@@ -155,35 +161,67 @@
     return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
+  // A row of circular "coin" buttons for picking a number 0..max.
+  function coinRow(value, max, section, field, ringKey) {
+    const ring = colors[ringKey];
+    const ringLight = colors[ringKey + 'Light'];
+    let html = '<div class="coin-row">';
+    for (let n = 0; n <= max; n++) {
+      const filled = n <= value;
+      const current = n === value;
+      const bg = current
+        ? `radial-gradient(circle at 35% 30%, ${ringLight}, ${ring})`
+        : (filled ? 'linear-gradient(160deg,#e9d8a8,#c8a24e)' : '#fbf6e6');
+      const border = current ? `2px solid ${ring}` : (filled ? '1px solid #a9793f' : '1px solid #ddcda0');
+      const boxShadow = current
+        ? '0 2px 5px rgba(42,32,24,0.35), inset 0 0 0 2px rgba(255,255,255,0.5)'
+        : (filled ? 'inset 0 1px 2px rgba(42,32,24,0.25)' : 'none');
+      const color = current ? '#fff' : (filled ? '#4a3418' : '#b3a077');
+      const transform = current ? 'translateY(-2px) scale(1.1)' : 'none';
+      html += `<button type="button" class="coin" data-action="setNumber" data-section="${section}" data-field="${field}" data-value="${n}" style="background:${bg};border:${border};box-shadow:${boxShadow};color:${color};transform:${transform};">${n}</button>`;
+    }
+    return html + '</div>';
+  }
+
+  function coinField(label, value, max, section, field, ringKey, hintText) {
+    return `
+      <div class="field">
+        <div class="field-row"><span>${esc(label)}</span><b>${value}</b></div>
+        ${coinRow(value, max, section, field, ringKey)}
+        ${hintText ? `<span class="hint">${esc(hintText)}</span>` : ''}
+      </div>`;
+  }
+
   function modRow(label, section, field, delta) {
     const active = state[section][field];
+    const ringKey = delta > 0 ? 'green' : delta < 0 ? 'red' : 'gold';
+    const ring = colors[ringKey];
+    const ringLight = colors[ringKey + 'Light'];
     const deltaText = (delta > 0 ? '+' : '') + delta;
-    const deltaColor = delta > 0 ? '#3f7a4f' : delta < 0 ? '#b0473a' : '#5a5142';
-    const swBg = active ? '#a97d3b' : '#d8cbaa';
-    const knobLeft = active ? 18 : 2;
+    const deltaColor = delta > 0 ? colors.green : delta < 0 ? colors.red : colors.gold;
+    const tokenBg = active ? `radial-gradient(circle at 35% 30%, ${ringLight}, ${ring})` : '#fbf6e6';
+    const tokenBorder = active ? `2px solid ${ring}` : '1px solid #ddcda0';
+    const tokenShadow = active
+      ? '0 2px 5px rgba(42,32,24,0.35), inset 0 0 0 2px rgba(255,255,255,0.5)'
+      : 'inset 0 1px 2px rgba(42,32,24,0.12)';
+    const checkOpacity = active ? 1 : 0;
     return `
       <div class="mod-row" data-action="toggle" data-section="${section}" data-field="${field}">
         <span class="mod-label">${esc(label)}</span>
         <span class="mod-delta" style="color:${deltaColor};">${deltaText}</span>
-        <div class="switch" style="background:${swBg};">
-          <div class="switch-knob" style="left:${knobLeft}px;"></div>
+        <div class="token" style="background:${tokenBg};border:${tokenBorder};box-shadow:${tokenShadow};">
+          <span class="token-check" style="opacity:${checkOpacity};">✓</span>
         </div>
       </div>`;
   }
 
-  function choiceBtn(label, section, field, value, extraWidth) {
+  function choiceBtn(label, section, field, value, accentKey, wide) {
     const active = state[section][field] === value;
-    return `<button type="button" class="choice-btn${active ? ' active' : ''}" data-action="setChoice" data-section="${section}" data-field="${field}" data-value="${value}">${esc(label)}</button>`;
-  }
-
-  function sliderBlock(label, section, field, min, max, hintText) {
-    const value = state[section][field];
-    return `
-      <div class="slider-block">
-        <div class="slider-row"><span>${esc(label)}</span><b>${value}</b></div>
-        <input type="range" min="${min}" max="${max}" value="${value}" data-action="setNumber" data-section="${section}" data-field="${field}">
-        ${hintText ? `<span class="hint">${esc(hintText)}</span>` : ''}
-      </div>`;
+    const c = colors[accentKey];
+    const bg = active ? c : '#fff';
+    const color = active ? '#fff' : '#6b5c46';
+    const border = active ? c : '#ddcda0';
+    return `<button type="button" class="choice-btn${wide ? ' wide' : ''}" data-action="setChoice" data-section="${section}" data-field="${field}" data-value="${value}" style="background:${bg};color:${color};border-color:${border};">${esc(label)}</button>`;
   }
 
   function renderGrid(rows) {
@@ -206,16 +244,16 @@
     const grid = buildGrid(eff.atk, eff.def);
 
     return `
-      <div class="card gap-12">
+      <div class="card gap-14 accent-gold">
         <h3 class="serif">Základní hodnoty</h3>
-        ${sliderBlock('Útok jednotky', 'melee', 'attack', 0, 10)}
-        ${sliderBlock('Obrana cíle', 'melee', 'defense', 0, 10)}
+        ${coinField('Útok jednotky', m.attack, 10, 'melee', 'attack', 'red')}
+        ${coinField('Obrana cíle', m.defense, 10, 'melee', 'defense', 'green')}
       </div>
 
-      <div class="card">
+      <div class="card accent-red">
         <h3 class="serif">Modifikátory útočníka</h3>
 
-        ${sliderBlock('Ztráty jednotky (zranění)', 'melee', 'atkWounds', 0, 9, '−1 za každé 3 zranění')}
+        ${coinField('Ztráty jednotky (zranění)', m.atkWounds, 9, 'melee', 'atkWounds', 'red', '−1 za každé 3 zranění')}
 
         ${modRow('Falanga (Phalanx)', 'melee', 'phalanx', 1)}
         ${modRow('Klín při nájezdu (Arrowhead)', 'melee', 'arrowTip', 1)}
@@ -227,24 +265,24 @@
         <button type="button" class="reset-btn" data-action="reset" data-section="melee">Resetovat modifikátory</button>
       </div>
 
-      <div class="card">
+      <div class="card accent-green">
         <h3 class="serif">Modifikátory obránce</h3>
 
         <div class="choice-group">
           <span class="choice-label">Formace</span>
-          <div class="choice-buttons">
-            ${choiceBtn('Žádná', 'melee', 'formation', 'none')}
-            ${choiceBtn('Čtverec proti jízdě +2', 'melee', 'formation', 'square')}
-            ${choiceBtn('Zeď štítů +1', 'melee', 'formation', 'wallOfShields')}
+          <div class="choice-buttons wrap">
+            ${choiceBtn('Žádná', 'melee', 'formation', 'none', 'green', true)}
+            ${choiceBtn('Čtverec proti jízdě +2', 'melee', 'formation', 'square', 'green', true)}
+            ${choiceBtn('Zeď štítů +1', 'melee', 'formation', 'wallOfShields', 'green', true)}
           </div>
         </div>
 
         <div class="choice-group">
           <span class="choice-label">Napadena</span>
           <div class="choice-buttons">
-            ${choiceBtn('Zepředu', 'melee', 'hit', 'front')}
-            ${choiceBtn('Z boku −1', 'melee', 'hit', 'flank')}
-            ${choiceBtn('Zezadu −2', 'melee', 'hit', 'rear')}
+            ${choiceBtn('Zepředu', 'melee', 'hit', 'front', 'green')}
+            ${choiceBtn('Z boku −1', 'melee', 'hit', 'flank', 'green')}
+            ${choiceBtn('Zezadu −2', 'melee', 'hit', 'rear', 'green')}
           </div>
         </div>
 
@@ -254,7 +292,7 @@
         ${modRow('Jednotka přišla o důstojníky (No Officer)', 'melee', 'defOfficerLost', -1)}
       </div>
 
-      <div class="card">
+      <div class="card accent-gold">
         <h3 class="serif">Početní tabulka</h3>
         <p class="grid-note">Efektivní útok <b>${eff.atk}</b>, efektivní obrana <b>${eff.def}</b>. Vzorec: potřebný hod = obrana − útok + 1.</p>
         ${renderGrid(grid)}
@@ -268,36 +306,36 @@
     const grid = buildGrid(eff.atk, eff.def);
 
     return `
-      <div class="card gap-12">
+      <div class="card gap-14 accent-gold">
         <h3 class="serif">Základní hodnoty</h3>
-        ${sliderBlock('Útok na dálku', 'ranged', 'attack', 0, 10)}
-        ${sliderBlock('Obrana cíle', 'ranged', 'defense', 0, 10)}
+        ${coinField('Útok na dálku', r.attack, 10, 'ranged', 'attack', 'red')}
+        ${coinField('Obrana cíle', r.defense, 10, 'ranged', 'defense', 'green')}
       </div>
 
-      <div class="card">
+      <div class="card accent-red">
         <h3 class="serif">Modifikátory střelce</h3>
-        ${sliderBlock('Ztráty jednotky (zranění)', 'ranged', 'atkWounds', 0, 9, '−1 za každé 3 zranění')}
+        ${coinField('Ztráty jednotky (zranění)', r.atkWounds, 9, 'ranged', 'atkWounds', 'red', '−1 za každé 3 zranění')}
         ${modRow('Jednotka přišla o důstojníky (No Officer)', 'ranged', 'atkOfficerLost', -1)}
         ${modRow('Zastřený výhled (Line of Sight)', 'ranged', 'losBlocked', -1)}
         <button type="button" class="reset-btn" data-action="reset" data-section="ranged">Resetovat modifikátory</button>
       </div>
 
-      <div class="card">
+      <div class="card accent-green">
         <h3 class="serif">Modifikátory cíle</h3>
         <div class="choice-group">
           <span class="choice-label">Formace</span>
-          <div class="choice-buttons">
-            ${choiceBtn('Žádná', 'ranged', 'formation', 'none')}
-            ${choiceBtn('Čtverec −1', 'ranged', 'formation', 'square')}
-            ${choiceBtn('Zeď štítů +1', 'ranged', 'formation', 'wallOfShields')}
+          <div class="choice-buttons wrap">
+            ${choiceBtn('Žádná', 'ranged', 'formation', 'none', 'green', true)}
+            ${choiceBtn('Čtverec −1', 'ranged', 'formation', 'square', 'green', true)}
+            ${choiceBtn('Zeď štítů +1', 'ranged', 'formation', 'wallOfShields', 'green', true)}
           </div>
         </div>
         <div class="choice-group">
           <span class="choice-label">Zásah</span>
           <div class="choice-buttons">
-            ${choiceBtn('Zepředu', 'ranged', 'hit', 'front')}
-            ${choiceBtn('Z boku −1', 'ranged', 'hit', 'flank')}
-            ${choiceBtn('Zezadu −2', 'ranged', 'hit', 'rear')}
+            ${choiceBtn('Zepředu', 'ranged', 'hit', 'front', 'green')}
+            ${choiceBtn('Z boku −1', 'ranged', 'hit', 'flank', 'green')}
+            ${choiceBtn('Zezadu −2', 'ranged', 'hit', 'rear', 'green')}
           </div>
         </div>
         ${modRow('Jednotka má hrdinu (Hero)', 'ranged', 'defHero', 1)}
@@ -305,7 +343,7 @@
         ${modRow('Jednotka přišla o důstojníky (No Officer)', 'ranged', 'defOfficerLost', -1)}
       </div>
 
-      <div class="card">
+      <div class="card accent-gold">
         <h3 class="serif">Početní tabulka</h3>
         <p class="grid-note">Efektivní útok <b>${eff.atk}</b>, efektivní obrana <b>${eff.def}</b>. Vzorec: potřebný hod = obrana − útok + 1.</p>
         ${renderGrid(grid)}
@@ -324,21 +362,21 @@
     });
 
     return `
-      <div class="card gap-12">
+      <div class="card gap-14 accent-gold">
         <h3 class="serif">Základní hodnota</h3>
-        ${sliderBlock('Morálka jednotky', 'morale', 'morale', 0, 12)}
-        ${sliderBlock('Počet aktuálních zranění', 'morale', 'wounds', 0, 9, '−1 za každé zranění')}
-        ${sliderBlock('Počet rozšířených sekcí formace', 'morale', 'extended', 0, 2, '−1 za každou rozšířenou sekci')}
+        ${coinField('Morálka jednotky', mo.morale, 12, 'morale', 'morale', 'gold')}
+        ${coinField('Počet aktuálních zranění', mo.wounds, 9, 'morale', 'wounds', 'red', '−1 za každé zranění')}
+        ${coinField('Počet rozšířených sekcí formace', mo.extended, 2, 'morale', 'extended', 'gold', '−1 za každou rozšířenou sekci')}
       </div>
 
-      <div class="card">
+      <div class="card accent-gold">
         <h3 class="serif">Modifikátory</h3>
         <div class="choice-group">
           <span class="choice-label">Je napadena</span>
           <div class="choice-buttons">
-            ${choiceBtn('Zepředu', 'morale', 'hit', 'front')}
-            ${choiceBtn('Z boku −1', 'morale', 'hit', 'flank')}
-            ${choiceBtn('Zezadu −2', 'morale', 'hit', 'rear')}
+            ${choiceBtn('Zepředu', 'morale', 'hit', 'front', 'gold')}
+            ${choiceBtn('Z boku −1', 'morale', 'hit', 'flank', 'gold')}
+            ${choiceBtn('Zezadu −2', 'morale', 'hit', 'rear', 'gold')}
           </div>
         </div>
         ${modRow('V dosahu vlivu generála', 'morale', 'general', 1)}
@@ -352,7 +390,7 @@
         <button type="button" class="reset-btn" data-action="reset" data-section="morale">Resetovat modifikátory</button>
       </div>
 
-      <div class="card">
+      <div class="card accent-gold">
         <h3 class="serif">Škála hodu (k6)</h3>
         <p class="grid-note">Výsledná morálka po modifikátorech: <b>${eff}</b>. Uspěješ, hodíš-li tuto hodnotu nebo méně (hod 1 uspěje vždy).</p>
         <div class="morale-scale">${scaleHtml}</div>
@@ -380,9 +418,9 @@
       resultBg = zoneBg(rangedInfo.zone);
     } else {
       resultLabel = 'Kontrola morálky — výsledek';
-      if (moraleEff >= 6) { resultText = 'Automatický úspěch'; resultColor = '#3f7a4f'; resultBg = '#e3ede2'; }
-      else if (moraleEff <= 0) { resultText = 'Uspěje jen hod 1'; resultColor = '#b0473a'; resultBg = '#f3e0dc'; }
-      else { resultText = 'Potřeba hodit ' + moraleEff + ' nebo méně'; resultColor = '#a97d3b'; resultBg = '#f1e9d8'; }
+      if (moraleEff >= 6) { resultText = 'Automatický úspěch'; resultColor = colors.green; resultBg = '#e2ead9'; }
+      else if (moraleEff <= 0) { resultText = 'Uspěje jen hod 1'; resultColor = colors.red; resultBg = '#f4ded9'; }
+      else { resultText = 'Potřeba hodit ' + moraleEff + ' nebo méně'; resultColor = colors.gold; resultBg = '#f6ecd4'; }
     }
 
     let sectionHtml = '';
@@ -394,7 +432,8 @@
       <section class="page">
         <div class="header">
           <h1 class="serif">ONUS! — Počítadlo hodu</h1>
-          <p>Vyber situaci, zapni platné modifikátory a hned uvidíš, kolik musíš hodit.</p>
+          <div class="divider"></div>
+          <p>Vyber situaci, zaklikni platné žetony a hned uvidíš, kolik musíš hodit.</p>
         </div>
 
         <div class="sticky-bar">
@@ -430,6 +469,10 @@
       const { section, field, value } = el.dataset;
       state[section][field] = value;
       render();
+    } else if (action === 'setNumber') {
+      const { section, field, value } = el.dataset;
+      state[section][field] = Number(value);
+      render();
     } else if (action === 'reset') {
       const { section } = el.dataset;
       if (section === 'melee') resetMelee();
@@ -437,14 +480,6 @@
       else if (section === 'morale') resetMorale();
       render();
     }
-  });
-
-  root.addEventListener('change', (e) => {
-    const el = e.target.closest('[data-action="setNumber"]');
-    if (!el) return;
-    const { section, field } = el.dataset;
-    state[section][field] = Number(el.value);
-    render();
   });
 
   render();

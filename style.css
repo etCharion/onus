@@ -1,13 +1,16 @@
 body {
   margin: 0;
-  background: #efe9db;
+  background: #ffffff;
   font-family: ui-sans-serif, system-ui, sans-serif;
-  color: #241f1a;
+  color: #2a2018;
 }
 
-input[type="range"] {
-  accent-color: #a97d3b;
-  width: 100%;
+a {
+  color: #8c2a22;
+}
+
+a:hover {
+  color: #6e2019;
 }
 
 button {
@@ -26,18 +29,26 @@ button {
 .header {
   max-width: 480px;
   margin: 0 auto;
-  padding: 18px 20px 4px;
+  padding: 20px 20px 10px;
 }
 
 .header h1 {
-  font-size: 21px;
-  margin: 0 0 4px;
+  font-size: 22px;
+  margin: 0 0 6px;
+  letter-spacing: .02em;
+}
+
+.divider {
+  height: 3px;
+  background: linear-gradient(90deg, #8c2a22, #9c7327, #2f5d3a);
+  border-radius: 2px;
+  margin-bottom: 8px;
 }
 
 .header p {
   font-size: 13px;
   line-height: 1.5;
-  color: #5a5142;
+  color: #6b5c46;
   margin: 0;
 }
 
@@ -45,11 +56,11 @@ button {
   position: sticky;
   top: 0;
   z-index: 5;
-  background: #efe9db;
+  background: #ffffff;
   padding: 10px 20px 12px;
   max-width: 480px;
   margin: 0 auto;
-  box-shadow: 0 6px 10px -6px rgba(36, 31, 26, 0.18);
+  box-shadow: 0 6px 10px -6px rgba(42, 32, 24, 0.15);
 }
 
 .tabs {
@@ -64,15 +75,15 @@ button {
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  border: 1px solid #d8cbaa;
-  background: #faf7ee;
-  color: #5a5142;
+  border: 2px solid #ddcda0;
+  background: #ffffff;
+  color: #6b5c46;
 }
 
 .tab-btn.active {
-  background: #a97d3b;
+  background: #9c7327;
   color: #fff;
-  border-color: #a97d3b;
+  border-color: #9c7327;
 }
 
 .result-box {
@@ -85,13 +96,14 @@ button {
 
 .result-label {
   font-size: 11px;
-  color: #5a5142;
+  color: #6b5c46;
   text-transform: uppercase;
-  letter-spacing: .04em;
+  letter-spacing: .06em;
   margin-bottom: 2px;
 }
 
 .result-text {
+  font-family: ui-serif, Georgia, serif;
   font-size: 21px;
   font-weight: 700;
 }
@@ -106,8 +118,8 @@ button {
 }
 
 .card {
-  background: #faf7ee;
-  border: 1px solid #d8cbaa;
+  background: #fffdf8;
+  border: 1px solid #e4d6ae;
   border-radius: 4px;
   padding: 16px;
   display: flex;
@@ -115,30 +127,65 @@ button {
   gap: 10px;
 }
 
-.card.gap-12 {
-  gap: 12px;
+.card.gap-14 {
+  gap: 14px;
+}
+
+.card.accent-gold {
+  border-top: 3px solid #9c7327;
+}
+
+.card.accent-red {
+  border-top: 3px solid #8c2a22;
+}
+
+.card.accent-green {
+  border-top: 3px solid #2f5d3a;
 }
 
 .card h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: #4a3418;
 }
 
-.slider-block {
+.field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
-.slider-row {
+.field-row {
   display: flex;
   justify-content: space-between;
   font-size: 13px;
 }
 
+.coin-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.coin {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-family: ui-serif, Georgia, serif;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
 .hint {
   font-size: 11px;
-  color: #5a5142;
+  color: #6b5c46;
 }
 
 .choice-group {
@@ -154,24 +201,25 @@ button {
 .choice-buttons {
   display: flex;
   gap: 6px;
+}
+
+.choice-buttons.wrap {
   flex-wrap: wrap;
 }
 
 .choice-btn {
   flex: 1;
-  min-width: 80px;
   height: 44px;
   border-radius: 4px;
-  border: 1px solid #d8cbaa;
-  background: #faf7ee;
-  color: #5a5142;
+  border: 2px solid #ddcda0;
+  background: #fff;
+  color: #6b5c46;
   font-size: 12px;
   cursor: pointer;
 }
 
-.choice-btn.active {
-  background: #a97d3b;
-  color: #fff;
+.choice-btn.wide {
+  min-width: 80px;
 }
 
 .mod-row {
@@ -181,7 +229,7 @@ button {
   gap: 10px;
   min-height: 44px;
   padding: 6px 2px;
-  border-bottom: 1px solid #eee2c8;
+  border-bottom: 1px solid #f0e6cc;
   cursor: pointer;
 }
 
@@ -197,29 +245,28 @@ button {
   text-align: right;
 }
 
-.switch {
-  width: 38px;
-  height: 22px;
-  border-radius: 11px;
-  position: relative;
+.token {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.switch-knob {
-  position: absolute;
-  top: 2px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+.token-check {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .reset-btn {
   align-self: flex-start;
   background: none;
   border: none;
-  color: #a97d3b;
+  color: #9c7327;
   font-size: 12px;
   text-decoration: underline;
   cursor: pointer;
@@ -230,13 +277,13 @@ button {
   margin: 0;
   font-size: 12px;
   line-height: 1.5;
-  color: #5a5142;
+  color: #6b5c46;
 }
 
 .grid-footnote {
   margin: 0;
   font-size: 11px;
-  color: #5a5142;
+  color: #6b5c46;
 }
 
 .calc-grid {
@@ -251,7 +298,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #5a5142;
+  color: #6b5c46;
 }
 
 .grid-row {
@@ -277,6 +324,7 @@ button {
   align-items: center;
   justify-content: center;
   border-radius: 4px;
+  font-family: ui-serif, Georgia, serif;
   font-size: 15px;
   font-weight: 700;
 }
