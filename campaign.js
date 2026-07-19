@@ -860,6 +860,29 @@
         navigate('#/campaign/does-not-exist');
         render();
         out.textContent = 'TEST_MISSING_OK ' + JSON.stringify({ h1: (document.querySelector('h1') || {}).textContent });
+      } else if (mode === 'guard') {
+        navigate('#/builder');
+        render();
+        const mountBefore = document.getElementById('armybuilder-mount');
+        const sel = mountBefore.querySelector('[data-action="setScenario"]');
+        let changeDispatched = false;
+        if (sel) {
+          sel.dispatchEvent(new Event('change', { bubbles: true }));
+          changeDispatched = true;
+        }
+        const clickBtn = mountBefore.querySelector('[data-action]');
+        let clickDispatched = false;
+        if (clickBtn) {
+          clickBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+          clickDispatched = true;
+        }
+        const mountAfter = document.getElementById('armybuilder-mount');
+        out.textContent = 'TEST_GUARD_OK ' + JSON.stringify({
+          sameNode: mountBefore === mountAfter,
+          changeDispatched: changeDispatched,
+          clickDispatched: clickDispatched,
+          hashStillBuilder: window.location.hash.indexOf('/builder') !== -1,
+        });
       }
     } catch (err) {
       out.textContent = 'TEST_ERROR ' + (err && err.stack ? err.stack : String(err));
