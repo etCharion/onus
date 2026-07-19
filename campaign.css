@@ -1,0 +1,391 @@
+/* ONUS! — Správa kampaní: vlastní styly Agenta A (campaign.js).
+   Ladí s style.css (kalkulačka) — stejné barvy, karty, tab/choice tlačítka. */
+
+/* --- obecné ovládací prvky uvnitř karet --------------------------------- */
+
+.field select,
+.field input[type="text"],
+.field input[type="number"] {
+  font-family: inherit;
+  font-size: 13px;
+  color: #2a2018;
+  background: #fff;
+  border: 2px solid #ddcda0;
+  border-radius: 4px;
+  padding: 8px 10px;
+  height: 38px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.field select:focus,
+.field input:focus {
+  outline: none;
+  border-color: #9c7327;
+}
+
+.choice-btn:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+.choice-btn.small {
+  flex: none;
+  min-width: 40px;
+  height: 36px;
+  padding: 0 4px;
+}
+
+/* --- seznam kampaní ------------------------------------------------------ */
+
+.campaign-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.campaign-card-head h3 {
+  font-size: 16px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #2a2018;
+}
+
+.campaign-card-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  text-align: center;
+  border-top: 1px solid #f0e6cc;
+  border-bottom: 1px solid #f0e6cc;
+  padding: 8px 0;
+}
+
+.campaign-card-stats b {
+  display: block;
+  font-size: 15px;
+  color: #4a3418;
+}
+
+.campaign-card-stats span {
+  display: block;
+  font-size: 9px;
+  line-height: 1.3;
+  color: #6b5c46;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+.campaign-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* --- detail kampaně: souhrn ---------------------------------------------- */
+
+.campaign-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 6px;
+}
+
+@media (min-width: 420px) {
+  .campaign-summary-grid { grid-template-columns: repeat(5, 1fr); }
+}
+
+.campaign-summary-grid > div {
+  text-align: center;
+  background: #fbf6e6;
+  border: 1px solid #f0e6cc;
+  border-radius: 4px;
+  padding: 8px 4px;
+}
+
+.campaign-summary-grid b {
+  display: block;
+  font-size: 16px;
+  color: #4a3418;
+}
+
+.campaign-summary-grid span {
+  display: block;
+  font-size: 9px;
+  color: #6b5c46;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  margin-top: 2px;
+}
+
+.campaign-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.campaign-actions .choice-btn {
+  flex: 1 1 140px;
+}
+
+/* --- log tabulka (hlavní prvek) ------------------------------------------ */
+
+.log-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px 4px;
+  box-sizing: border-box;
+}
+
+.log-card {
+  max-width: none;
+}
+
+.log-card h3 {
+  margin-bottom: 2px;
+}
+
+.log-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid #e4d6ae;
+  border-radius: 4px;
+}
+
+.log-table {
+  border-collapse: collapse;
+  font-size: 11px;
+  width: 100%;
+  min-width: 640px;
+}
+
+.log-table th,
+.log-table td {
+  border: 1px solid #e4d6ae;
+  padding: 4px 5px;
+  vertical-align: middle;
+  background: #fffdf8;
+}
+
+.log-table thead th {
+  background: #f6ecd4;
+  color: #4a3418;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.log-table .sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: #fffdf8;
+  text-align: left;
+  min-width: 150px;
+  max-width: 190px;
+}
+
+.log-table thead .sticky-col {
+  z-index: 4;
+  background: #f6ecd4;
+}
+
+.log-th-unit {
+  min-width: 150px;
+}
+
+.log-table td.log-td-num {
+  text-align: center;
+  min-width: 44px;
+  white-space: nowrap;
+}
+
+.log-td-unit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.log-unit-name {
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
+.log-unit-remove,
+.log-battle-remove {
+  border: none;
+  background: none;
+  color: #8c2a22;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+
+.log-unit-remove:hover,
+.log-battle-remove:hover {
+  color: #6e2019;
+}
+
+.log-td-initial {
+  min-width: 92px;
+}
+
+.log-td-initial.log-td-over {
+  background: #f4ded9;
+}
+
+.log-input {
+  font-family: inherit;
+  font-size: 11px;
+  border: 1px solid #ddcda0;
+  border-radius: 3px;
+  padding: 3px 2px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.log-input:focus {
+  outline: none;
+  border-color: #9c7327;
+}
+
+.log-input-initial {
+  width: 52px;
+}
+
+.log-points {
+  display: block;
+  font-size: 9.5px;
+  color: #6b5c46;
+  margin-top: 2px;
+}
+
+.log-th-battle {
+  min-width: 130px;
+  vertical-align: top;
+}
+
+.log-battle-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 4px;
+}
+
+.log-select,
+.log-battle-select {
+  font-family: inherit;
+  font-size: 10.5px;
+  border: 1px solid #ddcda0;
+  border-radius: 3px;
+  padding: 2px;
+  width: 100%;
+  box-sizing: border-box;
+  background: #fff;
+}
+
+.log-battle-year {
+  width: 100%;
+}
+
+.log-battle-result {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.log-result-btn {
+  flex: 1;
+  height: 26px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0;
+  min-width: 0;
+}
+
+.log-battle-vp {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 10px;
+  color: #6b5c46;
+  margin-bottom: 2px;
+}
+
+.log-battle-vp-input {
+  width: 48px;
+}
+
+.log-td-battle {
+  min-width: 130px;
+}
+
+.log-cell-inputs {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  margin-bottom: 3px;
+}
+
+.log-cell-inputs .log-input {
+  width: 40px;
+}
+
+.log-cond {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  margin: 0 auto;
+  border: 1px solid rgba(42, 32, 24, 0.35);
+  cursor: pointer;
+  padding: 0;
+}
+
+.log-td-remain {
+  font-size: 10.5px;
+  min-width: 74px;
+}
+
+.log-sum-row td {
+  background: #f6ecd4;
+  font-weight: 700;
+  text-align: center;
+  font-size: 10.5px;
+}
+
+.log-sum-row .sticky-col {
+  background: #f6ecd4;
+  text-align: left;
+}
+
+.log-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.log-toolbar .choice-btn {
+  flex: none;
+  min-width: 160px;
+}
+
+.log-empty-row td {
+  text-align: center;
+  color: #6b5c46;
+  padding: 16px 8px;
+}
+
+/* --- responzivní doladění --- */
+
+@media (max-width: 480px) {
+  .log-section { padding: 0 10px 4px; }
+  .log-table { font-size: 10px; }
+  .log-th-unit, .log-table .sticky-col { min-width: 120px; }
+}

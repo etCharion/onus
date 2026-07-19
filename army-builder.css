@@ -1,0 +1,165 @@
+/* Stavitel armád — vizuál laděný s kalkulačkou (viz style.css). */
+
+.ab-select {
+  height: 44px;
+  width: 100%;
+  border-radius: 4px;
+  border: 2px solid #ddcda0;
+  background: #fff;
+  color: #2a2018;
+  font-size: 13px;
+  font-family: inherit;
+  padding: 0 10px;
+}
+
+.ab-select:focus {
+  outline: none;
+  border-color: #9c7327;
+}
+
+.ab-input {
+  height: 40px;
+  width: 100%;
+  max-width: 160px;
+  border-radius: 4px;
+  border: 2px solid #ddcda0;
+  background: #fff;
+  color: #2a2018;
+  font-size: 14px;
+  font-family: inherit;
+  padding: 0 10px;
+  box-sizing: border-box;
+}
+
+.ab-input:focus {
+  outline: none;
+  border-color: #9c7327;
+}
+
+.ab-faction-heading {
+  margin-top: 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #f0e6cc;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: #9c7327;
+}
+
+.ab-faction-heading:first-child {
+  margin-top: 0;
+}
+
+.ab-row {
+  cursor: default;
+  gap: 8px;
+}
+
+.ab-stats-toggle {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: #9c7327;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ab-stats-toggle-empty {
+  cursor: default;
+}
+
+.ab-name {
+  flex: 1;
+}
+
+.ab-value {
+  font-size: 11px;
+  color: #6b5c46;
+  white-space: nowrap;
+}
+
+.ab-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.ab-step-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid #ddcda0;
+  background: #fff;
+  color: #6b5c46;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.ab-step-btn:hover:not(:disabled) {
+  border-color: #9c7327;
+  color: #9c7327;
+}
+
+.ab-step-btn:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+
+.ab-count {
+  min-width: 20px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #2a2018;
+}
+
+.ab-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px 8px;
+  padding: 2px 0 10px 26px;
+  font-size: 11px;
+  color: #6b5c46;
+}
+
+.ab-stat {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  border-bottom: 1px dotted #f0e6cc;
+}
+
+.ab-stat-wide {
+  grid-column: 1 / -1;
+  justify-content: flex-start;
+  border-bottom: none;
+  color: #9c7327;
+  font-weight: 700;
+}
+
+.ab-stat-label {
+  color: #6b5c46;
+}
+
+.ab-stat-val {
+  font-weight: 700;
+  color: #2a2018;
+}
+
+.ab-summary .field-row b {
+  font-size: 14px;
+}
