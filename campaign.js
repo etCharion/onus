@@ -182,12 +182,12 @@
         <h3 class="serif">Nová kampaň</h3>
         <div class="field">
           <label class="choice-label">Scénář</label>
-          <select data-action="setScenario">${scenarioOptions}</select>
+          <select data-action="campSetScenario">${scenarioOptions}</select>
           <span class="hint">${esc(sc.period)} · ${sc.battles.length} bitev v tabulce scénářů</span>
         </div>
         <div class="field">
           <label class="choice-label">Strana</label>
-          <select data-action="setSide">${sideOptions}</select>
+          <select data-action="campSetSide">${sideOptions}</select>
         </div>
         <div class="field">
           <label class="choice-label">Vlastní název kampaně (nepovinné)</label>
@@ -448,7 +448,7 @@
 
     const headerHtml = `
       <div class="header">
-        <h1 class="serif">${esc(c.name)}</h1>
+        <h1 class="serif">${esc(c.name || (sc ? sc.name : 'Kampaň'))}</h1>
         <div class="divider"></div>
         <p>${sc ? esc(sc.name) + ' (' + esc(sc.period) + ')' : 'Scénář nenalezen'} — strana <b>${esc(c.sideName)}</b></p>
       </div>`;
@@ -464,7 +464,7 @@
           <div><b>${totals.vpTotal}</b><span>VP celkem</span></div>
         </div>
         <div class="campaign-actions">
-          <button type="button" class="choice-btn wide" data-action="downloadPdf" data-id="${esc(c.id)}"${pdfDisabled ? ' disabled title="PDF export není momentálně k dispozici"' : ''}>Stáhnout PDF</button>
+          <button type="button" class="choice-btn wide" data-action="campDownloadPdf" data-id="${esc(c.id)}"${pdfDisabled ? ' disabled title="PDF export není momentálně k dispozici"' : ''}>Stáhnout PDF</button>
           <button type="button" class="choice-btn wide" data-action="gotoBuilder" data-id="${esc(c.id)}">Sestavit armádu do bitvy</button>
           <button type="button" class="choice-btn wide" data-action="gotoList">Zpět na seznam</button>
         </div>
@@ -717,7 +717,7 @@
       case 'deleteCampaign': doDeleteCampaign(ds.id); break;
       case 'gotoList': navigate('#/'); break;
       case 'gotoBuilder': navigate('#/builder?campaign=' + encodeURIComponent(ds.id)); break;
-      case 'downloadPdf': doDownloadPdf(ds.id); break;
+      case 'campDownloadPdf': doDownloadPdf(ds.id); break;
       case 'addBattle': doAddBattle(ds.id); break;
       case 'removeBattle': doRemoveBattle(ds.id, ds.battle); break;
       case 'setBattleResult': doSetBattleResult(ds.id, ds.battle, ds.value); break;
@@ -734,7 +734,7 @@
     if (!el || isForeignTarget(el)) return;
     const ds = el.dataset;
     switch (ds.action) {
-      case 'setScenario': {
+      case 'campSetScenario': {
         const f = ensureNewCampaignState();
         f.scenarioId = el.value;
         const sc = D.campaigns.find((s) => s.id === f.scenarioId);
@@ -744,7 +744,7 @@
         render();
         break;
       }
-      case 'setSide': { const f = ensureNewCampaignState(); f.sideName = el.value; render(); break; }
+      case 'campSetSide': { const f = ensureNewCampaignState(); f.sideName = el.value; render(); break; }
       case 'setName': { const f = ensureNewCampaignState(); f.name = el.value; break; }
       case 'setPrefillBattle': { const f = ensureNewCampaignState(); f.prefillBattleIndex = Number(el.value); break; }
       case 'setAddUnitFaction': {
@@ -793,100 +793,13 @@
 
   render();
 
-  // TEMP TEST HOOK — odstranit před odevzdáním. Spouští se přes ?test=create / ?test=verify.
-  (function selfTest() {
-    const mode = (window.location.search.match(/[?&]test=([a-z]+)/) || [])[1];
-    if (!mode) return;
-    const out = document.createElement('pre');
-    out.id = 'test-output';
-    try {
-      if (mode === 'create') {
-        localStorage.clear();
-        Store._reload();
-        const opts = { name: '', scenarioId: 'first-dacian-war', sideName: 'Dacian', prefillBattleIndex: 0 };
-        const c = Store.create(opts);
-        navigate('#/campaign/' + encodeURIComponent(c.id));
-        doAddBattle(c.id);
-        const c2 = Store.get(c.id);
-        const bid = c2.battles[c2.battles.length - 1].id;
-        const slotId = c2.units[0].id;
-        doSetFielded(c.id, bid, slotId, '3');
-        doSetLost(c.id, bid, slotId, '1');
-        doCycleCond(c.id, bid, slotId);
-        doSetBattleVp(c.id, bid, '5');
-        doSetBattleResult(c.id, bid, 'win');
-        const final = Store.get(c.id);
-        const row = final.battles[final.battles.length - 1].rows[slotId];
-        const result = {
-          campaignId: c.id,
-          unitsCount: final.units.length,
-          initialSum: final.units.reduce((s, u) => s + u.initial, 0),
-          battlesCount: final.battles.length,
-          row: row,
-          vp: final.battles[final.battles.length - 1].vp,
-          battleResult: final.battles[final.battles.length - 1].result,
-          domRows: document.querySelectorAll('.log-table tbody tr').length,
-          domBattleCols: document.querySelectorAll('.log-table thead th.log-th-battle').length,
-          domInputInitialFirst: (document.querySelector('.log-input-initial') || {}).value,
-          domCondBg: (document.querySelector('.log-cond') || {}).style && document.querySelector('.log-cond').style.background,
-        };
-        out.textContent = 'TEST_CREATE_OK ' + JSON.stringify(result);
-      } else if (mode === 'verify') {
-        Store._reload();
-        const list = Store.list();
-        const c = list[0];
-        const battle = c ? c.battles[c.battles.length - 1] : null;
-        const slotId = c ? c.units[0].id : null;
-        const row = battle && slotId ? battle.rows[slotId] : null;
-        navigate('#/campaign/' + encodeURIComponent(c.id));
-        render();
-        const result = {
-          campaignsCount: list.length,
-          unitsCount: c ? c.units.length : 0,
-          battlesCount: c ? c.battles.length : 0,
-          row: row,
-          vp: battle ? battle.vp : null,
-          battleResult: battle ? battle.result : null,
-          domRows: document.querySelectorAll('.log-table tbody tr').length,
-          domBattleCols: document.querySelectorAll('.log-table thead th.log-th-battle').length,
-        };
-        out.textContent = 'TEST_VERIFY_OK ' + JSON.stringify(result);
-      } else if (mode === 'nobuilder') {
-        navigate('#/builder');
-        render();
-        const mount = document.getElementById('armybuilder-mount');
-        out.textContent = 'TEST_NOBUILDER_OK ' + JSON.stringify({ text: mount ? mount.textContent.trim().slice(0, 80) : null });
-      } else if (mode === 'missing') {
-        navigate('#/campaign/does-not-exist');
-        render();
-        out.textContent = 'TEST_MISSING_OK ' + JSON.stringify({ h1: (document.querySelector('h1') || {}).textContent });
-      } else if (mode === 'guard') {
-        navigate('#/builder');
-        render();
-        const mountBefore = document.getElementById('armybuilder-mount');
-        const sel = mountBefore.querySelector('[data-action="setScenario"]');
-        let changeDispatched = false;
-        if (sel) {
-          sel.dispatchEvent(new Event('change', { bubbles: true }));
-          changeDispatched = true;
-        }
-        const clickBtn = mountBefore.querySelector('[data-action]');
-        let clickDispatched = false;
-        if (clickBtn) {
-          clickBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-          clickDispatched = true;
-        }
-        const mountAfter = document.getElementById('armybuilder-mount');
-        out.textContent = 'TEST_GUARD_OK ' + JSON.stringify({
-          sameNode: mountBefore === mountAfter,
-          changeDispatched: changeDispatched,
-          clickDispatched: clickDispatched,
-          hashStillBuilder: window.location.hash.indexOf('/builder') !== -1,
-        });
-      }
-    } catch (err) {
-      out.textContent = 'TEST_ERROR ' + (err && err.stack ? err.stack : String(err));
-    }
-    document.body.appendChild(out);
-  })();
+  // campaign.js je vykreslen synchronně a proběhne dřív než defer skripty
+  // (pdf-export.js apod.) — po jejich doběhnutí ještě jednou překreslíme,
+  // aby se stav tlačítka „Stáhnout PDF“ na hard reload/přímém odkazu srovnal.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', render);
+  } else {
+    window.setTimeout(render, 0);
+  }
+
 })();
