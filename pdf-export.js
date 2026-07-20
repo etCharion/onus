@@ -20,12 +20,6 @@
     footBg: [228, 214, 174],
   };
 
-  // Poznámka k odchylce od zadání: spec počítá se znaky ●/◐/✕, ale vložený font
-  // DejaVu (vendor/onus-pdf-fonts.js) je subset jen Latin + Latin Extended-A/B
-  // (ověřeno přes fontTools cmap) — geometrické tvary a dingbaty v něm chybí a
-  // vykreslily by se jako prázdné/rozbité znaky. Proto používáme znaky, které
-  // subset skutečně obsahuje a vizuálně/významově odpovídají.
-  var CONDITION_SYMBOLS = { ok: 'OK', worn: '~', destroyed: '×' };
   var RESULT_LABELS = { win: 'V', draw: 'R', loss: 'P' };
 
   // --- pomocné funkce -------------------------------------------------
@@ -169,16 +163,17 @@
       battles.forEach(function (b, i) { head.push('B' + (i + 1)); });
       head.push('Zbývá');
 
+      // Buňka bitvy jako v papírovém logu: nasazeno / z toho veteráni → zbývá po bitvě.
       function battleCell(b, slotId) {
         var r = b.rows ? b.rows[slotId] : null;
         var fielded = r && r.fielded != null ? r.fielded : null;
-        var lost = r && r.lost != null ? r.lost : null;
-        var cond = r && r.cond ? r.cond : '';
-        if (fielded == null && lost == null && !cond) return '';
+        var vets = r && r.vets != null ? r.vets : null;
+        var after = r && r.after != null ? r.after : null;
+        if (fielded == null && vets == null && after == null) return '';
         var f = fielded == null ? '–' : String(fielded);
-        var l = lost == null ? '–' : String(lost);
-        var sym = CONDITION_SYMBOLS[cond] || '';
-        return f + ' / ' + l + (sym ? ' ' + sym : '');
+        var v = vets == null ? '–' : String(vets);
+        var a = after == null ? '–' : String(after);
+        return f + ' / ' + v + ' → ' + a;
       }
 
       var body = (c.units || []).map(function (u) {
@@ -196,7 +191,7 @@
 
       var foot = ['SOUČTY', '', '', '', String(totals.initialCount), String(totals.initialPoints)];
       totals.perBattle.slice(0, 8).forEach(function (pb) {
-        foot.push(pb.fielded + ' (' + pb.fieldedPoints + ') / ' + pb.lost);
+        foot.push(pb.fielded + ' (' + pb.fieldedPoints + ' b.) / ' + pb.vets + ' → ' + pb.after);
       });
       foot.push(String(totals.remainingCount));
 
@@ -248,15 +243,13 @@
 
       y = doc.lastAutoTable.finalY + 5;
 
-      // legenda kondice
+      // legenda sloupců bitev
       y = ensureSpace(doc, y, 6, margin);
       setFont(doc, 'normal');
       doc.setFontSize(8);
       doc.setTextColor(COLORS.textMuted[0], COLORS.textMuted[1], COLORS.textMuted[2]);
       doc.text(
-        'Legenda kondice: ' + CONDITION_SYMBOLS.ok + ' = plná bojeschopnost    ' +
-        CONDITION_SYMBOLS.worn + ' = opotřebeno (worn)    ' +
-        CONDITION_SYMBOLS.destroyed + ' = zničeno (destroyed)',
+        'Sloupce bitev: nasazeno do bitvy / z toho veteráni → zbývá po bitvě (Condit.)',
         margin, y
       );
       y += 7;
