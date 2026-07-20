@@ -24,9 +24,12 @@
     return { campaigns: [] };
   }
 
-  // Starší model ukládal řádek bitvy jako {fielded, lost, cond}; nový model
-  // sleduje {fielded, vets, after} podle papírového logu (Starting / veteráni /
-  // Condit. = zbývá po bitvě). „after“ dopočítáme ze ztrát průchodem bitev.
+  // Aktuální model řádku bitvy podle listu Instructions v Campaign Log Sheetu:
+  // { fielded (nasazeno), lost (ztráty), vets (povýšeno na veterána),
+  //   elite (povýšeno na elitu), heroes (hrdinové u jednotky),
+  //   after (zbývá po bitvě = výchozí + dokoupené − ztracené; zapisuje se) }.
+  // Starší uložené modely: v1 {fielded, lost, cond}, v2 {fielded, vets, after}.
+  // Bitva: cond = výchozí podmínky ''|'green'|'yellow'|'red' (dříve result V/R/P).
   function migrateCampaign(c) {
     if (!c || !Array.isArray(c.battles)) return;
     (c.units || []).forEach((u) => {
@@ -34,15 +37,28 @@
       c.battles.forEach((b) => {
         const r = b.rows && b.rows[u.id];
         if (!r) return;
-        if (r.after === undefined && r.vets === undefined) {
-          const lost = (typeof r.lost === 'number') ? r.lost : null;
-          r.after = lost === null ? null : Math.max(0, rem - lost);
-          r.vets = null;
-          delete r.lost;
-          delete r.cond;
+        if (r.elite === undefined) {
+          if (r.cond !== undefined) {
+            // v1: ztráty přímo, kondiční tečku zahoď
+            const lost = (typeof r.lost === 'number') ? r.lost : null;
+            r.after = lost === null ? null : Math.max(0, rem - lost);
+            r.vets = null;
+            delete r.cond;
+          } else {
+            // v2: „after“ zůstává, ztráty dopočítej z rozdílu
+            r.lost = (r.after === null || r.after === undefined)
+              ? null : Math.max(0, rem - r.after);
+          }
+          r.elite = null;
+          r.heroes = null;
         }
         if (r.after !== null && r.after !== undefined) rem = r.after;
+        else if (r.lost) rem = Math.max(0, rem - r.lost);
       });
+    });
+    c.battles.forEach((b) => {
+      if (b.cond === undefined) b.cond = '';
+      delete b.result;
     });
   }
 
@@ -170,7 +186,7 @@
   }
 
   function addBattle(c, name, year) {
-    const b = { id: uid(), name: name || '', year: year || '', result: '', vp: null, rows: {} };
+    const b = { id: uid(), name: name || '', year: year || '', cond: '', vp: null, rows: {} };
     c.battles.push(b);
     return b;
   }
@@ -180,14 +196,17 @@
   }
 
   function row(b, slotId) {
-    if (!b.rows[slotId]) b.rows[slotId] = { fielded: null, vets: null, after: null };
+    if (!b.rows[slotId]) {
+      b.rows[slotId] = { fielded: null, lost: null, vets: null, elite: null, heroes: null, after: null };
+    }
     return b.rows[slotId];
   }
 
   // --- výpočty ---
 
   // Kolik jednotek slotu zbývá před bitvou battleIndex (bez indexu = po všech).
-  // Řídí se posledním vyplněným „po bitvě“ (Condit. v papírovém logu).
+  // Přednost má zapsané „zbývá po bitvě“ (Condit.) — může zahrnovat i dokoupené
+  // jednotky; není-li vyplněno, odečítají se ztráty.
   function remaining(c, slotId, battleIndex) {
     const slot = c.units.find((u) => u.id === slotId);
     if (!slot) return 0;
@@ -195,7 +214,9 @@
     let rem = slot.initial || 0;
     for (let i = 0; i < idx && i < c.battles.length; i++) {
       const r = c.battles[i].rows[slotId];
-      if (r && r.after !== null && r.after !== undefined) rem = r.after;
+      if (!r) continue;
+      if (r.after !== null && r.after !== undefined) rem = r.after;
+      else if (r.lost) rem = Math.max(0, rem - r.lost);
     }
     return rem;
   }
@@ -208,21 +229,21 @@
       initialPoints += (u.initial || 0) * (info ? info.v : 0);
     });
     const perBattle = c.battles.map((b, bi) => {
-      let fielded = 0, fieldedPoints = 0, vets = 0, after = 0, lost = 0;
+      let fielded = 0, fieldedPoints = 0, lost = 0, vets = 0, elite = 0, heroes = 0, after = 0;
       c.units.forEach((u) => {
         const r = b.rows[u.id];
         const info = unitInfo(u.f, u.n);
         const before = remaining(c, u.id, bi);
         if (r && r.fielded) { fielded += r.fielded; fieldedPoints += r.fielded * (info ? info.v : 0); }
+        if (r && r.lost) lost += r.lost;
         if (r && r.vets) vets += r.vets;
-        if (r && r.after !== null && r.after !== undefined) {
-          after += r.after;
-          lost += Math.max(0, before - r.after);
-        } else {
-          after += before;
-        }
+        if (r && r.elite) elite += r.elite;
+        if (r && r.heroes) heroes += r.heroes;
+        if (r && r.after !== null && r.after !== undefined) after += r.after;
+        else after += Math.max(0, before - ((r && r.lost) || 0));
       });
-      return { fielded: fielded, fieldedPoints: fieldedPoints, vets: vets, after: after, lost: lost, vp: b.vp };
+      return { fielded: fielded, fieldedPoints: fieldedPoints, lost: lost,
+               vets: vets, elite: elite, heroes: heroes, after: after, vp: b.vp };
     });
     let remainingCount = 0, remainingPoints = 0;
     c.units.forEach((u) => {
