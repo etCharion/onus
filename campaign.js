@@ -128,7 +128,7 @@
   function campaignCardHtml(c) {
     const sc = Store.scenario(c);
     const totals = Store.totals(c);
-    const played = c.battles.filter((b) => b.result).length;
+    const played = c.battles.length;
     return `
       <div class="card accent-gold campaign-card">
         <div class="campaign-card-head">
@@ -136,7 +136,7 @@
         </div>
         <p class="hint">${sc ? esc(sc.name) + ' · ' + esc(sc.period) : 'Scénář nenalezen'} — strana <b>${esc(c.sideName)}</b></p>
         <div class="campaign-card-stats">
-          <div><b>${played}/${c.battles.length}</b><span>bitev odehráno</span></div>
+          <div><b>${played}/8</b><span>bitev zapsáno</span></div>
           <div><b>${totals.remainingCount}</b><span>jednotek zbývá</span></div>
           <div><b>${totals.remainingPoints}</b><span>bodů zbývá</span></div>
           <div><b>${totals.vpTotal}</b><span>VP celkem</span></div>
@@ -243,20 +243,37 @@
     return ui.prefill[c.id];
   }
 
-  // Tři vstupy buňky bitvy podle papírového logu: Nasazeno (Starting, horní
-  // řádek), z toho Veteráni (dolní řádek) a Po bitvě (Condit. = kolik jednotek
-  // typu zbývá v armádě po bitvě).
+  // Šest polí buňky bitvy podle listu Instructions v sešitu:
+  // před bitvou Nasazeno; po bitvě Ztráty, povýšení na Veterána (žluté pole),
+  // na Elitu (šedé pole), Hrdinové (zelené pole) a Zbývá (Condit. — výchozí
+  // + dokoupené − ztracené, zapisuje se ručně).
   function battleCellInputs(c, b, slotId, r) {
     const val = (x) => (x === null || x === undefined ? '' : x);
-    const inp = (action, ph, title, v) =>
-      `<input type="number" min="0" class="log-input" placeholder="${ph}" title="${esc(title)}" value="${val(v)}" data-action="${action}" data-id="${esc(c.id)}" data-battle="${esc(b.id)}" data-slot="${esc(slotId)}">`;
-    return inp('setFielded', 'N', 'Nasazeno do bitvy (Starting)', r.fielded)
-      + inp('setVets', 'V', 'Z toho veteráni', r.vets)
-      + inp('setAfter', 'Po', 'Zbývá po bitvě (Condit.)', r.after);
+    const inp = (action, cls, ph, title, v) =>
+      `<input type="number" min="0" class="log-input${cls ? ' ' + cls : ''}" placeholder="${ph}" title="${esc(title)}" value="${val(v)}" data-action="${action}" data-id="${esc(c.id)}" data-battle="${esc(b.id)}" data-slot="${esc(slotId)}">`;
+    return `
+      <div class="log-cell-inputs">
+        ${inp('setFielded', '', 'N', 'Nasazeno do bitvy (Starting)', r.fielded)}
+        ${inp('setLost', '', 'Z', 'Ztráty v bitvě', r.lost)}
+        ${inp('setAfter', 'log-input-after', 'Zb', 'Zbývá po bitvě (Condit.) — výchozí + dokoupené − ztracené', r.after)}
+      </div>
+      <div class="log-cell-inputs">
+        ${inp('setVets', 'log-input-vet', 'V', 'Povýšeno na veterána (žluté pole v sešitu)', r.vets)}
+        ${inp('setElite', 'log-input-elite', 'E', 'Povýšeno na elitu (šedé pole v sešitu)', r.elite)}
+        ${inp('setHeroes', 'log-input-hero', 'H', 'Hrdinové u jednotky (zelené pole v sešitu)', r.heroes)}
+      </div>`;
   }
 
-  // Ovládání bitvy (název, rok, výsledek V/R/P jako zelené/žluté/červené pole
-  // v sešitu, Vict. body) — sdílené tabulkou i mobilním pohledem po bitvách.
+  // Zaškrtávací pole výchozích podmínek bitvy (Initial Condit. v sešitu):
+  // červená = výhoda soupeře, žlutá = bez výhody, zelená = výhoda hráče.
+  const COND_FILL = { red: '#8c2a22', yellow: '#e3c26a', green: '#2f5d3a' };
+  function condBox(c, b, value, title) {
+    const active = b.cond === value;
+    return `<button type="button" class="log-cond-box${active ? ' active' : ''}" style="--cond-color:${COND_FILL[value]};" data-action="setBattleCond" data-id="${esc(c.id)}" data-battle="${esc(b.id)}" data-value="${value}" title="${esc(title)}">${active ? '✕' : ''}</button>`;
+  }
+
+  // Ovládání bitvy (název, rok, výchozí podmínky bitvy — červená/žlutá/zelená
+  // jako v sešitu, Vict. body) — sdílené tabulkou i mobilním pohledem po bitvách.
   function battleControlsHtml(c, sc, b, isLast) {
     const scenarioBattles = sc ? sc.battles : [];
     const matchIndex = scenarioBattles.findIndex((sb) => sb.n === b.name);
@@ -274,10 +291,11 @@
           ${isCustom ? `<input type="text" class="log-input log-battle-custom" data-action="setBattleCustomName" data-id="${esc(c.id)}" data-battle="${esc(b.id)}" value="${esc(b.name)}" placeholder="Název bitvy">` : ''}
           <input type="text" class="log-input log-battle-year" data-action="setBattleYear" data-id="${esc(c.id)}" data-battle="${esc(b.id)}" value="${esc(b.year)}" placeholder="Rok">
         </div>
-        <div class="log-battle-result">
-          ${choiceBtnStyled('V', b.result === 'win', 'green', { action: 'setBattleResult', id: c.id, battle: b.id, value: 'win' })}
-          ${choiceBtnStyled('R', b.result === 'draw', 'gold', { action: 'setBattleResult', id: c.id, battle: b.id, value: 'draw' })}
-          ${choiceBtnStyled('P', b.result === 'loss', 'red', { action: 'setBattleResult', id: c.id, battle: b.id, value: 'loss' })}
+        <div class="log-battle-cond" title="Výchozí podmínky bitvy (Initial Condit.)">
+          <span class="log-cond-label">Podm.</span>
+          ${condBox(c, b, 'red', 'Výhoda soupeře (červená)')}
+          ${condBox(c, b, 'yellow', 'Bez výhody (žlutá)')}
+          ${condBox(c, b, 'green', 'Výhoda hráče (zelená)')}
         </div>
         <div class="log-battle-vp">
           <label>VP</label>
@@ -291,7 +309,7 @@
     return `
       <th class="log-th-battle">
         ${battleControlsHtml(c, sc, b, isLast)}
-        <div class="log-battle-legend">N / V / Po bitvě</div>
+        <div class="log-battle-legend">Nasazeno / Ztráty / Zbývá<br>Veterán / Elita / Hrdinové</div>
       </th>`;
   }
 
@@ -302,11 +320,9 @@
     const initial = u.initial || 0;
     const over = initial > m;
     const cells = battles.map((b) => {
-      const r = b.rows[u.id] || { fielded: null, vets: null, after: null };
+      const r = b.rows[u.id] || {};
       return `
-        <td class="log-td-battle">
-          <div class="log-cell-inputs">${battleCellInputs(c, b, u.id, r)}</div>
-        </td>`;
+        <td class="log-td-battle">${battleCellInputs(c, b, u.id, r)}</td>`;
     }).join('');
     const remain = Store.remaining(c, u.id);
     return `
@@ -328,7 +344,7 @@
 
   function sumRowHtml(c, totals) {
     const perBattleCells = totals.perBattle.map((pb) =>
-      `<td class="log-td-num">${pb.fielded} ks / ${pb.fieldedPoints} b. · ${pb.vets} vet.<br>po bitvě ${pb.after} ks (−${pb.lost})</td>`
+      `<td class="log-td-num">${pb.fielded} ks / ${pb.fieldedPoints} b. · −${pb.lost} · zb. ${pb.after}<br>vet ${pb.vets} · el ${pb.elite} · hrd ${pb.heroes}</td>`
     ).join('');
     return `
       <tr class="log-sum-row">
@@ -432,7 +448,7 @@
     const isLast = active === c.battles.length - 1;
     const pb = totals.perBattle[active];
     const rows = c.units.map((u) => {
-      const r = b.rows[u.id] || { fielded: null, vets: null, after: null };
+      const r = b.rows[u.id] || {};
       const before = Store.remaining(c, u.id, active);
       return `
         <div class="log-mob-row">
@@ -440,15 +456,15 @@
             <span class="log-unit-name">${esc(u.f)} — ${esc(u.n)}</span>
             <span class="log-mob-meta">před bitvou ${before} ks</span>
           </div>
-          <div class="log-mob-inputs log-mob-inputs-battle">${battleCellInputs(c, b, u.id, r)}</div>
+          <div class="log-mob-inputs-battle">${battleCellInputs(c, b, u.id, r)}</div>
         </div>`;
     }).join('');
 
     return chipsHtml + `
       <div class="log-mob-battle-controls">${battleControlsHtml(c, sc, b, isLast)}</div>
-      <p class="hint">N = nasazeno do bitvy, V = z toho veteráni, Po = zbývá po bitvě.</p>
+      <p class="hint">N = nasazeno, Z = ztráty, Zb = zbývá po bitvě · V = veterán, E = elita, H = hrdinové.</p>
       <div class="log-mob-list">${rows}</div>
-      <p class="log-mob-sum">Nasazeno <b>${pb.fielded} ks / ${pb.fieldedPoints} b.</b> · veteránů <b>${pb.vets}</b> · po bitvě <b>${pb.after} ks</b> (−${pb.lost} ztrát)</p>`;
+      <p class="log-mob-sum">Nasazeno <b>${pb.fielded} ks / ${pb.fieldedPoints} b.</b> · ztráty <b>${pb.lost}</b> · zbývá <b>${pb.after} ks</b><br>povýšení: veterán <b>${pb.vets}</b> · elita <b>${pb.elite}</b> · hrdinové <b>${pb.heroes}</b></p>`;
   }
 
   function renderLogSection(c, sc) {
@@ -476,7 +492,7 @@
       <div class="log-section">
         <div class="card accent-gold log-card">
           <h3 class="serif">Log kampaně</h3>
-          <p class="hint">Za každou bitvu: N = nasazeno (Starting), V = z toho veteráni, Po = zbývá po bitvě (Condit.).</p>
+          <p class="hint">Před bitvou: N = nasazeno. Po bitvě: Z = ztráty, Zb = zbývá (výchozí + dokoupené − ztracené), V/E/H = povýšení na veterána / elitu / počet hrdinů. Podm. = výchozí podmínky bitvy (červená = výhoda soupeře, žlutá = bez výhody, zelená = výhoda hráče).</p>
           ${toggle}
           ${bodyHtml}
           ${toolbar}
@@ -744,10 +760,10 @@
     render();
   }
 
-  function doSetBattleResult(cid, bid, value) {
+  function doSetBattleCond(cid, bid, value) {
     const c = Store.get(cid); if (!c) return;
     const b = c.battles.find((x) => x.id === bid); if (!b) return;
-    b.result = (b.result === value) ? '' : value;
+    b.cond = (b.cond === value) ? '' : value;
     Store.update(c);
     render();
   }
@@ -761,29 +777,12 @@
     render();
   }
 
-  function doSetFielded(cid, bid, slotId, val) {
-    const c = Store.get(cid); if (!c) return;
-    const b = c.battles.find((x) => x.id === bid); if (!b) return;
-    const r = Store.row(b, slotId);
-    r.fielded = clampCount(val);
-    Store.update(c);
-    render();
-  }
 
-  function doSetVets(cid, bid, slotId, val) {
+  function doSetRowField(cid, bid, slotId, field, val) {
     const c = Store.get(cid); if (!c) return;
     const b = c.battles.find((x) => x.id === bid); if (!b) return;
     const r = Store.row(b, slotId);
-    r.vets = clampCount(val);
-    Store.update(c);
-    render();
-  }
-
-  function doSetAfter(cid, bid, slotId, val) {
-    const c = Store.get(cid); if (!c) return;
-    const b = c.battles.find((x) => x.id === bid); if (!b) return;
-    const r = Store.row(b, slotId);
-    r.after = clampCount(val);
+    r[field] = clampCount(val);
     Store.update(c);
     render();
   }
@@ -847,7 +846,7 @@
       case 'campDownloadPdf': doDownloadPdf(ds.id); break;
       case 'addBattle': doAddBattle(ds.id); break;
       case 'removeBattle': doRemoveBattle(ds.id, ds.battle); break;
-      case 'setBattleResult': doSetBattleResult(ds.id, ds.battle, ds.value); break;
+      case 'setBattleCond': doSetBattleCond(ds.id, ds.battle, ds.value); break;
       case 'removeUnitSlot': doRemoveUnitSlot(ds.id, ds.slot); break;
       case 'addUnitSlot': doAddUnitSlot(ds.id); break;
       case 'prefillRecommended': doPrefillRecommended(ds.id); break;
@@ -910,9 +909,12 @@
       case 'setBattleYear': doSetBattleYear(ds.id, ds.battle, el.value); break;
       case 'setBattleVp': doSetBattleVp(ds.id, ds.battle, el.value); break;
       case 'setInitial': doSetInitial(ds.id, ds.slot, el.value); break;
-      case 'setFielded': doSetFielded(ds.id, ds.battle, ds.slot, el.value); break;
-      case 'setVets': doSetVets(ds.id, ds.battle, ds.slot, el.value); break;
-      case 'setAfter': doSetAfter(ds.id, ds.battle, ds.slot, el.value); break;
+      case 'setFielded': doSetRowField(ds.id, ds.battle, ds.slot, 'fielded', el.value); break;
+      case 'setLost': doSetRowField(ds.id, ds.battle, ds.slot, 'lost', el.value); break;
+      case 'setVets': doSetRowField(ds.id, ds.battle, ds.slot, 'vets', el.value); break;
+      case 'setElite': doSetRowField(ds.id, ds.battle, ds.slot, 'elite', el.value); break;
+      case 'setHeroes': doSetRowField(ds.id, ds.battle, ds.slot, 'heroes', el.value); break;
+      case 'setAfter': doSetRowField(ds.id, ds.battle, ds.slot, 'after', el.value); break;
       default: break;
     }
   }

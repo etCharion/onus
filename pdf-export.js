@@ -20,7 +20,12 @@
     footBg: [228, 214, 174],
   };
 
-  var RESULT_LABELS = { win: 'V', draw: 'R', loss: 'P' };
+  // Výchozí podmínky bitvy (Initial Condit. v sešitu)
+  var COND_LABELS = {
+    green: 'výhoda hráče',
+    yellow: 'bez výhody',
+    red: 'výhoda soupeře',
+  };
 
   // --- pomocné funkce -------------------------------------------------
 
@@ -163,17 +168,19 @@
       battles.forEach(function (b, i) { head.push('B' + (i + 1)); });
       head.push('Zbývá');
 
-      // Buňka bitvy jako v papírovém logu: nasazeno / z toho veteráni → zbývá po bitvě.
+      // Buňka bitvy jako v papírovém logu: nasazeno / ztráty → zbývá po bitvě,
+      // druhý řádek povýšení: V = veterán, E = elita, H = hrdinové.
       function battleCell(b, slotId) {
         var r = b.rows ? b.rows[slotId] : null;
-        var fielded = r && r.fielded != null ? r.fielded : null;
-        var vets = r && r.vets != null ? r.vets : null;
-        var after = r && r.after != null ? r.after : null;
-        if (fielded == null && vets == null && after == null) return '';
-        var f = fielded == null ? '–' : String(fielded);
-        var v = vets == null ? '–' : String(vets);
-        var a = after == null ? '–' : String(after);
-        return f + ' / ' + v + ' → ' + a;
+        if (!r) return '';
+        var vals = ['fielded', 'lost', 'after', 'vets', 'elite', 'heroes'].map(function (k) {
+          return r[k] == null ? null : r[k];
+        });
+        if (vals.every(function (v) { return v === null; })) return '';
+        var d = function (v) { return v === null ? '–' : String(v); };
+        var line1 = d(vals[0]) + ' / ' + d(vals[1]) + ' → ' + d(vals[2]);
+        var line2 = 'V' + d(vals[3]) + ' E' + d(vals[4]) + ' H' + d(vals[5]);
+        return line1 + '\n' + line2;
       }
 
       var body = (c.units || []).map(function (u) {
@@ -191,7 +198,8 @@
 
       var foot = ['SOUČTY', '', '', '', String(totals.initialCount), String(totals.initialPoints)];
       totals.perBattle.slice(0, 8).forEach(function (pb) {
-        foot.push(pb.fielded + ' (' + pb.fieldedPoints + ' b.) / ' + pb.vets + ' → ' + pb.after);
+        foot.push(pb.fielded + ' (' + pb.fieldedPoints + ' b.) / ' + pb.lost + ' → ' + pb.after +
+          '\nV' + pb.vets + ' E' + pb.elite + ' H' + pb.heroes);
       });
       foot.push(String(totals.remainingCount));
 
@@ -249,7 +257,7 @@
       doc.setFontSize(8);
       doc.setTextColor(COLORS.textMuted[0], COLORS.textMuted[1], COLORS.textMuted[2]);
       doc.text(
-        'Sloupce bitev: nasazeno do bitvy / z toho veteráni → zbývá po bitvě (Condit.)',
+        'Sloupce bitev: nasazeno / ztráty → zbývá po bitvě (Condit.); V = povýšeno na veterána, E = na elitu, H = hrdinové.',
         margin, y
       );
       y += 7;
@@ -260,18 +268,18 @@
       setFont(doc, 'bold');
       doc.setFontSize(10);
       doc.setTextColor(COLORS.text[0], COLORS.text[1], COLORS.text[2]);
-      doc.text('Výsledky bitev', margin, y);
+      doc.text('Bitvy', margin, y);
       y += 5.5;
 
       setFont(doc, 'normal');
       doc.setFontSize(8.5);
       (c.battles || []).forEach(function (b, i) {
         y = ensureSpace(doc, y, 5, margin);
-        var label = RESULT_LABELS[b.result] || '–';
+        var cond = COND_LABELS[b.cond] || '–';
         var vp = (b.vp == null) ? '–' : String(b.vp);
         var line = 'B' + (i + 1) + ': ' + (b.name || '(bez názvu)') +
           (b.year ? ' (' + b.year + ')' : '') +
-          ' — výsledek ' + label + ', VP: ' + vp;
+          ' — výchozí podmínky: ' + cond + ', VP: ' + vp;
         doc.text(line, margin, y);
         y += 5;
       });
