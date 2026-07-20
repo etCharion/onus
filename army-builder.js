@@ -367,21 +367,24 @@
     var budget = ready ? effectiveBudget(st) : 0;
     var totals = computeTotals(st, avail);
 
-    var html = '' +
+    var cards = '' +
+      (st.campaignError ? errorCard() : '') +
+      contextCard(st, scenarioObj, sideObj) +
+      (ready ? budgetCard(st, rec) : '') +
+      (ready ? actionsCard(st, rec, avail.factions.length > 0) : '') +
+      (ready ? rosterCard(st, avail) : '') +
+      (ready ? summaryCard(st, totals, budget, null, scenarioObj) : '');
+
+    // embedded: hostitel (campaign.js) už vykreslil hlavičku stránky i obal
+    // .content — vypiš jen samotné karty, ať se hlavička neduplikuje.
+    var html = st.embedded ? '<div class="ab-embedded">' + cards + '</div>' : '' +
       '<section class="page ab-page">' +
         '<div class="header">' +
           '<h1 class="serif">ONUS! — Stavitel armád</h1>' +
           '<div class="divider"></div>' +
           '<p>Sestav armádu podle rozpočtu, doporučené sestavy nebo náhodně a stáhni ji jako PDF.</p>' +
         '</div>' +
-        '<div class="content">' +
-          (st.campaignError ? errorCard() : '') +
-          contextCard(st, scenarioObj, sideObj) +
-          (ready ? budgetCard(st, rec) : '') +
-          (ready ? actionsCard(st, rec, avail.factions.length > 0) : '') +
-          (ready ? rosterCard(st, avail) : '') +
-          (ready ? summaryCard(st, totals, budget, null, scenarioObj) : '') +
-        '</div>' +
+        '<div class="content">' + cards + '</div>' +
       '</section>';
 
     root.innerHTML = html;
@@ -392,6 +395,7 @@
   function buildInitialState(opts) {
     var st = {
       campaignId: opts && opts.campaignId,
+      embedded: !!(opts && opts.embedded),
       campaign: null,
       campaignError: false,
       scenarioId: '',
