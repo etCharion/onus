@@ -14,21 +14,14 @@
     gold: '#9c7327', goldLight: '#e3c26a',
   };
 
-  const COND_ORDER = ['', 'ok', 'worn', 'destroyed'];
-  const COND_COLOR = { '': '#e8ddbe', ok: colors.green, worn: colors.gold, destroyed: colors.red };
-  const COND_TITLE = {
-    '': 'Kondice: nezadáno (klikni pro nastavení)',
-    ok: 'Kondice: v pořádku (klikni pro změnu)',
-    worn: 'Kondice: oslabená (klikni pro změnu)',
-    destroyed: 'Kondice: zničená (klikni pro vynulování)',
-  };
-
   // Nepersistovaný stav formulářů (mezi rendery přežívá, ale nikoli reload).
   const ui = {
     showNewForm: false,
-    newCampaign: null,     // { scenarioId, sideName, name, prefill, prefillBattleIndex }
+    newCampaign: null,     // { scenarioId, sideName, name, prefillMode, prefillBattleIndex }
     addUnit: {},            // campaignId -> { faction, name, count }
     prefill: {},            // campaignId -> { battleIndex }
+    logView: {},            // campaignId -> 'table' | 'battles'
+    activeBattle: {},       // campaignId -> -1 (výchozí armáda) | index bitvy
   };
 
   function esc(str) {
@@ -98,21 +91,6 @@
       </section>`;
   }
 
-  function toggleRow(label, active, action, dataAttrs, ringKey) {
-    ringKey = ringKey || 'green';
-    const ring = colors[ringKey], ringLight = colors[ringKey + 'Light'];
-    const tokenBg = active ? `radial-gradient(circle at 35% 30%, ${ringLight}, ${ring})` : '#fbf6e6';
-    const tokenBorder = active ? `2px solid ${ring}` : '1px solid #ddcda0';
-    const attrs = Object.keys(dataAttrs || {}).map((k) => `data-${k}="${esc(dataAttrs[k])}"`).join(' ');
-    return `
-      <div class="mod-row" data-action="${esc(action)}" ${attrs}>
-        <span class="mod-label">${esc(label)}</span>
-        <div class="token" style="background:${tokenBg};border:${tokenBorder};">
-          <span class="token-check" style="opacity:${active ? 1 : 0};">✓</span>
-        </div>
-      </div>`;
-  }
-
   function choiceBtnStyled(label, active, accentKey, dataAttrs) {
     const c = colors[accentKey];
     const bg = active ? c : '#fff';
@@ -133,11 +111,18 @@
         scenarioId: sc.id,
         sideName: sc.sides[0].name,
         name: '',
-        prefill: false,
+        prefillMode: 'pool',   // 'none' | 'pool' | 'recommended'
         prefillBattleIndex: 0,
       };
     }
     return ui.newCampaign;
+  }
+
+  function poolSummary(scenarioId, sideName) {
+    const pool = Store.campaignPool(scenarioId, sideName);
+    let count = 0, points = 0;
+    pool.forEach((u) => { count += u.m || 0; points += (u.m || 0) * (u.v || 0); });
+    return { units: pool.length, count: count, points: points };
   }
 
   function campaignCardHtml(c) {
@@ -183,7 +168,7 @@
         <div class="field">
           <label class="choice-label">Scénář</label>
           <select data-action="campSetScenario">${scenarioOptions}</select>
-          <span class="hint">${esc(sc.period)} · ${sc.battles.length} bitev v tabulce scénářů</span>
+          <span class="hint">${esc(sc.period)} · ${sc.battles.length} bitev v tabulce scénářů${sc.note ? ' · ' + esc(sc.note) : ''}</span>
         </div>
         <div class="field">
           <label class="choice-label">Strana</label>
@@ -193,14 +178,22 @@
           <label class="choice-label">Vlastní název kampaně (nepovinné)</label>
           <input type="text" data-action="setName" value="${esc(f.name)}" placeholder="${esc(sc.name)}">
         </div>
-        ${hasRecommended ? `
         <div class="field">
-          ${toggleRow('Předvyplnit doporučenou armádu', f.prefill, 'togglePrefill', {}, 'green')}
-          ${f.prefill ? `
+          <label class="choice-label">Výchozí armáda</label>
+          <div class="choice-buttons wrap">
+            ${choiceBtnStyled('Výchozí armáda strany', f.prefillMode === 'pool', 'green', { action: 'setPrefillMode', value: 'pool' })}
+            ${hasRecommended ? choiceBtnStyled('Doporučená pro bitvu', f.prefillMode === 'recommended', 'green', { action: 'setPrefillMode', value: 'recommended' }) : ''}
+            ${choiceBtnStyled('Prázdná soupiska', f.prefillMode === 'none', 'green', { action: 'setPrefillMode', value: 'none' })}
+          </div>
+          ${f.prefillMode === 'pool' ? (() => {
+            const ps = poolSummary(sc.id, f.sideName);
+            return `<span class="hint">Naplní soupisku všemi předdefinovanými jednotkami strany s plnými dostupnými počty dle tabulky: ${ps.units} typů jednotek, ${ps.count} ks / ${ps.points} b.</span>`;
+          })() : ''}
+          ${f.prefillMode === 'recommended' ? `
             <select data-action="setPrefillBattle">${battleOptions}</select>
             <span class="hint">Doporučená sestava pro vybranou bitvu se stane výchozí armádou kampaně.</span>
           ` : ''}
-        </div>` : ''}
+        </div>
         <button type="button" class="choice-btn wide" data-action="createCampaign">Založit kampaň</button>
       </div>`;
   }
@@ -250,14 +243,21 @@
     return ui.prefill[c.id];
   }
 
-  function condBtnHtml(c, b, slotId) {
-    const r = b.rows[slotId];
-    const cond = r ? (r.cond || '') : '';
-    return `<button type="button" class="log-cond" style="background:${COND_COLOR[cond]};" data-action="cycleCond" data-id="${esc(c.id)}" data-battle="${esc(b.id)}" data-slot="${esc(slotId)}" title="${esc(COND_TITLE[cond])}"></button>`;
+  // Tři vstupy buňky bitvy podle papírového logu: Nasazeno (Starting, horní
+  // řádek), z toho Veteráni (dolní řádek) a Po bitvě (Condit. = kolik jednotek
+  // typu zbývá v armádě po bitvě).
+  function battleCellInputs(c, b, slotId, r) {
+    const val = (x) => (x === null || x === undefined ? '' : x);
+    const inp = (action, ph, title, v) =>
+      `<input type="number" min="0" class="log-input" placeholder="${ph}" title="${esc(title)}" value="${val(v)}" data-action="${action}" data-id="${esc(c.id)}" data-battle="${esc(b.id)}" data-slot="${esc(slotId)}">`;
+    return inp('setFielded', 'N', 'Nasazeno do bitvy (Starting)', r.fielded)
+      + inp('setVets', 'V', 'Z toho veteráni', r.vets)
+      + inp('setAfter', 'Po', 'Zbývá po bitvě (Condit.)', r.after);
   }
 
-  function battleHeaderHtml(c, sc, b, idx) {
-    const isLast = idx === c.battles.length - 1;
+  // Ovládání bitvy (název, rok, výsledek V/R/P jako zelené/žluté/červené pole
+  // v sešitu, Vict. body) — sdílené tabulkou i mobilním pohledem po bitvách.
+  function battleControlsHtml(c, sc, b, isLast) {
     const scenarioBattles = sc ? sc.battles : [];
     const matchIndex = scenarioBattles.findIndex((sb) => sb.n === b.name);
     const isCustom = matchIndex === -1;
@@ -267,7 +267,6 @@
     const customOption = `<option value="custom"${isCustom ? ' selected' : ''}>Vlastní název…</option>`;
 
     return `
-      <th class="log-th-battle">
         <div class="log-battle-head">
           <select class="log-battle-select" data-action="setBattleName" data-id="${esc(c.id)}" data-battle="${esc(b.id)}">
             ${options}${customOption}
@@ -284,7 +283,15 @@
           <label>VP</label>
           <input type="number" class="log-input log-battle-vp-input" data-action="setBattleVp" data-id="${esc(c.id)}" data-battle="${esc(b.id)}" value="${b.vp === null || b.vp === undefined ? '' : b.vp}">
         </div>
-        ${isLast ? `<button type="button" class="log-battle-remove" data-action="removeBattle" data-id="${esc(c.id)}" data-battle="${esc(b.id)}" title="Odebrat poslední bitvu">✕ odebrat</button>` : ''}
+        ${isLast ? `<button type="button" class="log-battle-remove" data-action="removeBattle" data-id="${esc(c.id)}" data-battle="${esc(b.id)}" title="Odebrat poslední bitvu">✕ odebrat</button>` : ''}`;
+  }
+
+  function battleHeaderHtml(c, sc, b, idx) {
+    const isLast = idx === c.battles.length - 1;
+    return `
+      <th class="log-th-battle">
+        ${battleControlsHtml(c, sc, b, isLast)}
+        <div class="log-battle-legend">N / V / Po bitvě</div>
       </th>`;
   }
 
@@ -295,14 +302,10 @@
     const initial = u.initial || 0;
     const over = initial > m;
     const cells = battles.map((b) => {
-      const r = b.rows[u.id] || { fielded: null, lost: null, cond: '' };
+      const r = b.rows[u.id] || { fielded: null, vets: null, after: null };
       return `
         <td class="log-td-battle">
-          <div class="log-cell-inputs">
-            <input type="number" min="0" class="log-input" placeholder="N" title="Nasazeno" value="${r.fielded === null || r.fielded === undefined ? '' : r.fielded}" data-action="setFielded" data-id="${esc(c.id)}" data-battle="${esc(b.id)}" data-slot="${esc(u.id)}">
-            <input type="number" min="0" class="log-input" placeholder="Z" title="Ztráty" value="${r.lost === null || r.lost === undefined ? '' : r.lost}" data-action="setLost" data-id="${esc(c.id)}" data-battle="${esc(b.id)}" data-slot="${esc(u.id)}">
-          </div>
-          ${condBtnHtml(c, b, u.id)}
+          <div class="log-cell-inputs">${battleCellInputs(c, b, u.id, r)}</div>
         </td>`;
     }).join('');
     const remain = Store.remaining(c, u.id);
@@ -325,7 +328,7 @@
 
   function sumRowHtml(c, totals) {
     const perBattleCells = totals.perBattle.map((pb) =>
-      `<td class="log-td-num">${pb.fielded} ks / ${pb.fieldedPoints} b.<br>−${pb.lost} ks ztrát</td>`
+      `<td class="log-td-num">${pb.fielded} ks / ${pb.fieldedPoints} b. · ${pb.vets} vet.<br>po bitvě ${pb.after} ks (−${pb.lost})</td>`
     ).join('');
     return `
       <tr class="log-sum-row">
@@ -337,10 +340,21 @@
       </tr>`;
   }
 
-  function renderLogSection(c, sc) {
-    const totals = Store.totals(c);
+  function ensureLogView(c) {
+    if (!ui.logView[c.id]) {
+      ui.logView[c.id] = window.innerWidth <= 640 ? 'battles' : 'table';
+    }
+    if (ui.activeBattle[c.id] === undefined) {
+      ui.activeBattle[c.id] = c.battles.length ? c.battles.length - 1 : -1;
+    }
+    if (ui.activeBattle[c.id] >= c.battles.length) {
+      ui.activeBattle[c.id] = c.battles.length ? c.battles.length - 1 : -1;
+    }
+    return ui.logView[c.id];
+  }
+
+  function renderLogTable(c, sc, totals) {
     const battles = c.battles;
-    const canAddBattle = battles.length < 8;
     const colCount = 4 + battles.length + 1;
 
     const theadBattles = battles.map((b, i) => battleHeaderHtml(c, sc, b, i)).join('');
@@ -361,21 +375,111 @@
     const sumRow = c.units.length ? sumRowHtml(c, totals) : '';
 
     return `
+      <div class="log-table-wrap">
+        <table class="log-table">
+          <thead>${theadRow}</thead>
+          <tbody>${bodyRows}</tbody>
+          ${sumRow ? `<tfoot>${sumRow}</tfoot>` : ''}
+        </table>
+      </div>`;
+  }
+
+  // Mobilní pohled: jedna bitva (nebo výchozí armáda) najednou, jednotky pod sebou.
+  function renderBattleLog(c, sc, totals) {
+    const active = ui.activeBattle[c.id];
+    const canAddBattle = c.battles.length < 8;
+
+    let chips = choiceBtnStyled('Výchozí', active === -1, 'gold', { action: 'setActiveBattle', id: c.id, value: '-1' });
+    c.battles.forEach((b, i) => {
+      chips += choiceBtnStyled('B' + (i + 1), active === i, 'gold', { action: 'setActiveBattle', id: c.id, value: String(i) });
+    });
+    if (canAddBattle) {
+      chips += `<button type="button" class="choice-btn log-result-btn" data-action="addBattle" data-id="${esc(c.id)}">+</button>`;
+    }
+    const chipsHtml = `<div class="log-battle-chips">${chips}</div>`;
+
+    if (!c.units.length) {
+      return chipsHtml + `<p class="grid-note">Zatím žádné jednotky v soupisce — přidej je níže.</p>`;
+    }
+
+    if (active === -1) {
+      const rows = c.units.map((u) => {
+        const info = Store.unitInfo(u.f, u.n);
+        const v = info ? info.v : 0;
+        const m = info ? info.m : 0;
+        const initial = u.initial || 0;
+        return `
+          <div class="log-mob-row${initial > m ? ' log-mob-over' : ''}">
+            <div class="log-mob-head">
+              <span class="log-unit-name">${esc(u.f)} — ${esc(u.n)}</span>
+              <button type="button" class="log-unit-remove" data-action="removeUnitSlot" data-id="${esc(c.id)}" data-slot="${esc(u.id)}" title="Odebrat jednotku">✕</button>
+            </div>
+            <div class="log-mob-inputs">
+              <label>Výchozí
+                <input type="number" min="0" class="log-input" value="${initial}" data-action="setInitial" data-id="${esc(c.id)}" data-slot="${esc(u.id)}">
+              </label>
+              <span class="log-mob-meta">${v} b./ks · max ${m} · ${initial * v} b.</span>
+            </div>
+          </div>`;
+      }).join('');
+      return chipsHtml + `
+        <div class="log-mob-list">${rows}</div>
+        <p class="log-mob-sum">Výchozí armáda: <b>${totals.initialCount} ks / ${totals.initialPoints} b.</b></p>`;
+    }
+
+    const b = c.battles[active];
+    if (!b) return chipsHtml;
+    const isLast = active === c.battles.length - 1;
+    const pb = totals.perBattle[active];
+    const rows = c.units.map((u) => {
+      const r = b.rows[u.id] || { fielded: null, vets: null, after: null };
+      const before = Store.remaining(c, u.id, active);
+      return `
+        <div class="log-mob-row">
+          <div class="log-mob-head">
+            <span class="log-unit-name">${esc(u.f)} — ${esc(u.n)}</span>
+            <span class="log-mob-meta">před bitvou ${before} ks</span>
+          </div>
+          <div class="log-mob-inputs log-mob-inputs-battle">${battleCellInputs(c, b, u.id, r)}</div>
+        </div>`;
+    }).join('');
+
+    return chipsHtml + `
+      <div class="log-mob-battle-controls">${battleControlsHtml(c, sc, b, isLast)}</div>
+      <p class="hint">N = nasazeno do bitvy, V = z toho veteráni, Po = zbývá po bitvě.</p>
+      <div class="log-mob-list">${rows}</div>
+      <p class="log-mob-sum">Nasazeno <b>${pb.fielded} ks / ${pb.fieldedPoints} b.</b> · veteránů <b>${pb.vets}</b> · po bitvě <b>${pb.after} ks</b> (−${pb.lost} ztrát)</p>`;
+  }
+
+  function renderLogSection(c, sc) {
+    const totals = Store.totals(c);
+    const view = ensureLogView(c);
+    const canAddBattle = c.battles.length < 8;
+
+    const toggle = `
+      <div class="log-view-toggle">
+        ${choiceBtnStyled('Tabulka', view === 'table', 'gold', { action: 'setLogView', id: c.id, value: 'table' })}
+        ${choiceBtnStyled('Po bitvách', view === 'battles', 'gold', { action: 'setLogView', id: c.id, value: 'battles' })}
+      </div>`;
+
+    const bodyHtml = view === 'battles'
+      ? renderBattleLog(c, sc, totals)
+      : renderLogTable(c, sc, totals);
+
+    const toolbar = view === 'battles' ? '' : `
+      <div class="log-toolbar">
+        <button type="button" class="choice-btn wide" data-action="addBattle" data-id="${esc(c.id)}"${canAddBattle ? '' : ' disabled'}>+ Přidat bitvu</button>
+        ${!canAddBattle ? '<span class="hint">Maximálně 8 bitev (jako v sešitu Campaign Log).</span>' : `<span class="hint">${c.battles.length} / 8 bitev</span>`}
+      </div>`;
+
+    return `
       <div class="log-section">
         <div class="card accent-gold log-card">
           <h3 class="serif">Log kampaně</h3>
-          <p class="hint">Nasazeno / Ztráty za bitvu, kondice (klikni na tečku: prázdná → OK → oslabená → zničená).</p>
-          <div class="log-table-wrap">
-            <table class="log-table">
-              <thead>${theadRow}</thead>
-              <tbody>${bodyRows}</tbody>
-              ${sumRow ? `<tfoot>${sumRow}</tfoot>` : ''}
-            </table>
-          </div>
-          <div class="log-toolbar">
-            <button type="button" class="choice-btn wide" data-action="addBattle" data-id="${esc(c.id)}"${canAddBattle ? '' : ' disabled'}>+ Přidat bitvu</button>
-            ${!canAddBattle ? '<span class="hint">Maximálně 8 bitev (jako v sešitu Campaign Log).</span>' : `<span class="hint">${battles.length} / 8 bitev</span>`}
-          </div>
+          <p class="hint">Za každou bitvu: N = nasazeno (Starting), V = z toho veteráni, Po = zbývá po bitvě (Condit.).</p>
+          ${toggle}
+          ${bodyHtml}
+          ${toolbar}
         </div>
       </div>`;
   }
@@ -409,6 +513,17 @@
           <input type="number" min="0" data-action="setAddUnitCount" data-id="${esc(c.id)}" value="${f.count}">
         </div>
         <button type="button" class="choice-btn wide" data-action="addUnitSlot" data-id="${esc(c.id)}"${f.faction && f.name ? '' : ' disabled'}>+ Přidat jednotku</button>
+      </div>`;
+  }
+
+  function renderPoolCard(c) {
+    const ps = poolSummary(c.scenarioId, c.sideName);
+    if (!ps.units) return '';
+    return `
+      <div class="card accent-green">
+        <h3 class="serif">Výchozí armáda strany</h3>
+        <p class="grid-note">Doplní do soupisky všechny předdefinované jednotky tvé strany s plnými dostupnými počty dle tabulky (${ps.units} typů, ${ps.count} ks / ${ps.points} b.). Jednotky, které už v soupisce jsou, nemění.</p>
+        <button type="button" class="choice-btn wide" data-action="prefillPool" data-id="${esc(c.id)}">Načíst výchozí armádu strany</button>
       </div>`;
   }
 
@@ -450,7 +565,7 @@
       <div class="header">
         <h1 class="serif">${esc(c.name || (sc ? sc.name : 'Kampaň'))}</h1>
         <div class="divider"></div>
-        <p>${sc ? esc(sc.name) + ' (' + esc(sc.period) + ')' : 'Scénář nenalezen'} — strana <b>${esc(c.sideName)}</b></p>
+        <p>${sc ? esc(sc.name) + ' (' + esc(sc.period) + ')' : 'Scénář nenalezen'} — strana <b>${esc(c.sideName)}</b>${sc && sc.note ? '<br><span class="hint">' + esc(sc.note) + '</span>' : ''}</p>
       </div>`;
 
     const summaryHtml = `
@@ -472,12 +587,13 @@
 
     const logHtml = renderLogSection(c, sc);
     const addUnitHtml = renderAddUnitForm(c);
+    const poolHtml = renderPoolCard(c);
     const recommendedHtml = renderRecommendedSection(c, sc);
 
     const body = `
       <div class="content">${summaryHtml}</div>
       ${logHtml}
-      <div class="content">${addUnitHtml}${recommendedHtml}</div>`;
+      <div class="content">${addUnitHtml}${poolHtml}${recommendedHtml}</div>`;
 
     root.innerHTML = shell('list', headerHtml, body);
   }
@@ -537,11 +653,22 @@
     if (!sc) return;
     const trimmedName = f.name.trim();
     const opts = { name: trimmedName || sc.name, scenarioId: f.scenarioId, sideName: f.sideName };
-    if (f.prefill && D.recommended[f.scenarioId]) opts.prefillBattleIndex = f.prefillBattleIndex;
+    if (f.prefillMode === 'recommended' && D.recommended[f.scenarioId]) opts.prefillBattleIndex = f.prefillBattleIndex;
     const c = Store.create(opts);
+    if (f.prefillMode === 'pool') {
+      Store.prefillPool(c);
+      Store.update(c);
+    }
     ui.newCampaign = null;
     ui.showNewForm = false;
     navigate('#/campaign/' + encodeURIComponent(c.id));
+  }
+
+  function doPrefillPool(cid) {
+    const c = Store.get(cid); if (!c) return;
+    const added = Store.prefillPool(c);
+    if (added) Store.update(c);
+    render();
   }
 
   function doDeleteCampaign(id) {
@@ -565,6 +692,7 @@
     const next = sc ? sc.battles[c.battles.length] : null;
     Store.addBattle(c, next ? next.n : '', next ? next.y : '');
     Store.update(c);
+    ui.activeBattle[cid] = c.battles.length - 1;
     render();
   }
 
@@ -624,16 +752,6 @@
     render();
   }
 
-  function doCycleCond(cid, bid, slotId) {
-    const c = Store.get(cid); if (!c) return;
-    const b = c.battles.find((x) => x.id === bid); if (!b) return;
-    const r = Store.row(b, slotId);
-    const idx = COND_ORDER.indexOf(r.cond || '');
-    r.cond = COND_ORDER[(idx + 1) % COND_ORDER.length];
-    Store.update(c);
-    render();
-  }
-
   function doSetInitial(cid, slotId, val) {
     const c = Store.get(cid); if (!c) return;
     const slot = c.units.find((u) => u.id === slotId); if (!slot) return;
@@ -652,11 +770,20 @@
     render();
   }
 
-  function doSetLost(cid, bid, slotId, val) {
+  function doSetVets(cid, bid, slotId, val) {
     const c = Store.get(cid); if (!c) return;
     const b = c.battles.find((x) => x.id === bid); if (!b) return;
     const r = Store.row(b, slotId);
-    r.lost = clampCount(val);
+    r.vets = clampCount(val);
+    Store.update(c);
+    render();
+  }
+
+  function doSetAfter(cid, bid, slotId, val) {
+    const c = Store.get(cid); if (!c) return;
+    const b = c.battles.find((x) => x.id === bid); if (!b) return;
+    const r = Store.row(b, slotId);
+    r.after = clampCount(val);
     Store.update(c);
     render();
   }
@@ -711,7 +838,7 @@
     switch (ds.action) {
       case 'nav': navigate(ds.href); break;
       case 'toggleNewForm': ui.showNewForm = !ui.showNewForm; render(); break;
-      case 'togglePrefill': { const f = ensureNewCampaignState(); f.prefill = !f.prefill; render(); break; }
+      case 'setPrefillMode': { const f = ensureNewCampaignState(); f.prefillMode = ds.value; render(); break; }
       case 'createCampaign': doCreateCampaign(); break;
       case 'openCampaign': navigate('#/campaign/' + encodeURIComponent(ds.id)); break;
       case 'deleteCampaign': doDeleteCampaign(ds.id); break;
@@ -721,10 +848,12 @@
       case 'addBattle': doAddBattle(ds.id); break;
       case 'removeBattle': doRemoveBattle(ds.id, ds.battle); break;
       case 'setBattleResult': doSetBattleResult(ds.id, ds.battle, ds.value); break;
-      case 'cycleCond': doCycleCond(ds.id, ds.battle, ds.slot); break;
       case 'removeUnitSlot': doRemoveUnitSlot(ds.id, ds.slot); break;
       case 'addUnitSlot': doAddUnitSlot(ds.id); break;
       case 'prefillRecommended': doPrefillRecommended(ds.id); break;
+      case 'prefillPool': doPrefillPool(ds.id); break;
+      case 'setLogView': ui.logView[ds.id] = ds.value; render(); break;
+      case 'setActiveBattle': ui.activeBattle[ds.id] = Number(ds.value); render(); break;
       default: break;
     }
   }
@@ -782,7 +911,8 @@
       case 'setBattleVp': doSetBattleVp(ds.id, ds.battle, el.value); break;
       case 'setInitial': doSetInitial(ds.id, ds.slot, el.value); break;
       case 'setFielded': doSetFielded(ds.id, ds.battle, ds.slot, el.value); break;
-      case 'setLost': doSetLost(ds.id, ds.battle, ds.slot, el.value); break;
+      case 'setVets': doSetVets(ds.id, ds.battle, ds.slot, el.value); break;
+      case 'setAfter': doSetAfter(ds.id, ds.battle, ds.slot, el.value); break;
       default: break;
     }
   }

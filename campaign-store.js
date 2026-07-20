@@ -15,10 +15,35 @@
       const raw = localStorage.getItem(KEY);
       if (raw) {
         const state = JSON.parse(raw);
-        if (state && Array.isArray(state.campaigns)) return state;
+        if (state && Array.isArray(state.campaigns)) {
+          state.campaigns.forEach(migrateCampaign);
+          return state;
+        }
       }
     } catch (e) { /* poškozená data — začni znovu */ }
     return { campaigns: [] };
+  }
+
+  // Starší model ukládal řádek bitvy jako {fielded, lost, cond}; nový model
+  // sleduje {fielded, vets, after} podle papírového logu (Starting / veteráni /
+  // Condit. = zbývá po bitvě). „after“ dopočítáme ze ztrát průchodem bitev.
+  function migrateCampaign(c) {
+    if (!c || !Array.isArray(c.battles)) return;
+    (c.units || []).forEach((u) => {
+      let rem = u.initial || 0;
+      c.battles.forEach((b) => {
+        const r = b.rows && b.rows[u.id];
+        if (!r) return;
+        if (r.after === undefined && r.vets === undefined) {
+          const lost = (typeof r.lost === 'number') ? r.lost : null;
+          r.after = lost === null ? null : Math.max(0, rem - lost);
+          r.vets = null;
+          delete r.lost;
+          delete r.cond;
+        }
+        if (r.after !== null && r.after !== undefined) rem = r.after;
+      });
+    });
   }
 
   function save(state) {
@@ -45,6 +70,35 @@
     const s = scenario(c);
     if (!s) return null;
     return s.sides.find((sd) => sd.name === c.sideName) || null;
+  }
+
+  // Předdefinované jednotky kampaně: kompletní pool jednotek, které smí daná
+  // strana používat (frakce strany podle named ranges v Campaign Log Sheetu).
+  function campaignPool(scenarioId, sideName) {
+    const sc = D.campaigns.find((s) => s.id === scenarioId);
+    if (!sc) return [];
+    const sd = sc.sides.find((s) => s.name === sideName);
+    if (!sd) return [];
+    const pool = [];
+    sd.factions.forEach((f) => {
+      D.units.forEach((u) => { if (u.f === f) pool.push(u); });
+    });
+    return pool;
+  }
+
+  // Naplní soupisku kampaně výchozím (defaultním) složením armády strany:
+  // všechny předdefinované jednotky s plnými dostupnými počty — sloupec
+  // „TOTAL AVAILABLE“ v tabulce Traianus odpovídá sloupci „max. počet“
+  // v Campaign Log Sheetu. Existující sloty nechává beze změny. Vrací počet
+  // přidaných slotů. Nepersistuje — volej update(c).
+  function prefillPool(c) {
+    const pool = campaignPool(c.scenarioId, c.sideName);
+    let added = 0;
+    pool.forEach((u) => {
+      const exists = c.units.some((s) => s.f === u.f && s.n === u.n);
+      if (!exists) { addUnit(c, u.f, u.n, u.m || 0); added++; }
+    });
+    return added;
   }
 
   // Strana s frakcí Rom.Empire dostává „římský“ sloupec doporučených armád.
@@ -126,27 +180,24 @@
   }
 
   function row(b, slotId) {
-    if (!b.rows[slotId]) b.rows[slotId] = { fielded: null, lost: null, cond: '' };
+    if (!b.rows[slotId]) b.rows[slotId] = { fielded: null, vets: null, after: null };
     return b.rows[slotId];
   }
 
   // --- výpočty ---
 
-  function lostBefore(c, battleIndex, slotId) {
-    let lost = 0;
-    for (let i = 0; i < battleIndex && i < c.battles.length; i++) {
-      const r = c.battles[i].rows[slotId];
-      if (r && r.lost) lost += r.lost;
-    }
-    return lost;
-  }
-
-  // Kolik jednotek slotu zbývá před bitvou battleIndex (Infinity = po všech).
+  // Kolik jednotek slotu zbývá před bitvou battleIndex (bez indexu = po všech).
+  // Řídí se posledním vyplněným „po bitvě“ (Condit. v papírovém logu).
   function remaining(c, slotId, battleIndex) {
     const slot = c.units.find((u) => u.id === slotId);
     if (!slot) return 0;
     const idx = battleIndex === undefined ? c.battles.length : battleIndex;
-    return slot.initial - lostBefore(c, idx, slotId);
+    let rem = slot.initial || 0;
+    for (let i = 0; i < idx && i < c.battles.length; i++) {
+      const r = c.battles[i].rows[slotId];
+      if (r && r.after !== null && r.after !== undefined) rem = r.after;
+    }
+    return rem;
   }
 
   function totals(c) {
@@ -156,16 +207,22 @@
       initialCount += u.initial || 0;
       initialPoints += (u.initial || 0) * (info ? info.v : 0);
     });
-    const perBattle = c.battles.map((b) => {
-      let fielded = 0, fieldedPoints = 0, lost = 0;
+    const perBattle = c.battles.map((b, bi) => {
+      let fielded = 0, fieldedPoints = 0, vets = 0, after = 0, lost = 0;
       c.units.forEach((u) => {
         const r = b.rows[u.id];
-        if (!r) return;
         const info = unitInfo(u.f, u.n);
-        if (r.fielded) { fielded += r.fielded; fieldedPoints += r.fielded * (info ? info.v : 0); }
-        if (r.lost) lost += r.lost;
+        const before = remaining(c, u.id, bi);
+        if (r && r.fielded) { fielded += r.fielded; fieldedPoints += r.fielded * (info ? info.v : 0); }
+        if (r && r.vets) vets += r.vets;
+        if (r && r.after !== null && r.after !== undefined) {
+          after += r.after;
+          lost += Math.max(0, before - r.after);
+        } else {
+          after += before;
+        }
       });
-      return { fielded: fielded, fieldedPoints: fieldedPoints, lost: lost, vp: b.vp };
+      return { fielded: fielded, fieldedPoints: fieldedPoints, vets: vets, after: after, lost: lost, vp: b.vp };
     });
     let remainingCount = 0, remainingPoints = 0;
     c.units.forEach((u) => {
@@ -189,6 +246,7 @@
     addBattle: addBattle, removeBattle: removeBattle, row: row,
     unitInfo: unitInfo, scenario: scenario, sideDef: sideDef,
     sideKind: sideKind, recommendedFor: recommendedFor,
+    campaignPool: campaignPool, prefillPool: prefillPool,
     remaining: remaining, totals: totals,
     _reload: function () { state = load(); },
   };
