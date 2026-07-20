@@ -506,7 +506,7 @@
     const mount = document.getElementById('armybuilder-mount');
     if (window.ArmyBuilder && typeof window.ArmyBuilder.render === 'function') {
       try {
-        window.ArmyBuilder.render(mount, { campaignId: campaign ? campaignId : undefined });
+        window.ArmyBuilder.render(mount, { campaignId: campaign ? campaignId : undefined, embedded: true });
       } catch (err) {
         mount.innerHTML = `<div class="card accent-red"><h3 class="serif">Modul se nepodařilo načíst</h3><p>Stavitel armády narazil na chybu při spuštění.</p></div>`;
         if (window.console && console.error) console.error('ArmyBuilder.render selhal:', err);
