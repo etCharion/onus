@@ -228,11 +228,15 @@
   // Detail kampaně (#/campaign/<id>)
   // ---------------------------------------------------------------------
 
+  function availableUnitsForFaction(c, faction) {
+    return D.units.filter((u) => u.f === faction && !c.units.some((cu) => cu.f === u.f && cu.n === u.n));
+  }
+
   function ensureAddUnitState(c) {
     if (!ui.addUnit[c.id]) {
       const sd = Store.sideDef(c);
       const faction = sd && sd.factions.length ? sd.factions[0] : '';
-      const units = D.units.filter((u) => u.f === faction);
+      const units = availableUnitsForFaction(c, faction);
       ui.addUnit[c.id] = { faction: faction, name: units.length ? units[0].n : '', count: 1 };
     }
     return ui.addUnit[c.id];
@@ -507,10 +511,12 @@
     const factionOptions = sd.factions.map((fac) =>
       `<option value="${esc(fac)}"${fac === f.faction ? ' selected' : ''}>${esc(fac)}</option>`
     ).join('');
-    const units = D.units.filter((u) => u.f === f.faction);
-    const unitOptions = units.map((u) =>
-      `<option value="${esc(u.n)}"${u.n === f.name ? ' selected' : ''}>${esc(u.n)} (${u.v} b., max ${u.m})</option>`
-    ).join('');
+    const units = availableUnitsForFaction(c, f.faction);
+    const unitOptions = units.length
+      ? units.map((u) =>
+          `<option value="${esc(u.n)}"${u.n === f.name ? ' selected' : ''}>${esc(u.n)} (${u.v} b., max ${u.m})</option>`
+        ).join('')
+      : `<option value="">— všechny jednotky této frakce už jsou v soupisce —</option>`;
     const selectedUnit = units.find((u) => u.n === f.name);
     return `
       <div class="card accent-green">
@@ -521,7 +527,7 @@
         </div>
         <div class="field">
           <label class="choice-label">Jednotka</label>
-          <select data-action="setAddUnitName" data-id="${esc(c.id)}">${unitOptions}</select>
+          <select data-action="setAddUnitName" data-id="${esc(c.id)}"${units.length ? '' : ' disabled'}>${unitOptions}</select>
           ${selectedUnit ? `<span class="hint">Hodnota ${selectedUnit.v} b., max ${selectedUnit.m} ks v soupisce.</span>` : ''}
         </div>
         <div class="field">
@@ -801,6 +807,7 @@
     const c = Store.get(cid); if (!c) return;
     const f = ensureAddUnitState(c);
     if (!f.faction || !f.name) return;
+    if (c.units.some((u) => u.f === f.faction && u.n === f.name)) return;
     Store.addUnit(c, f.faction, f.name, f.count || 0);
     Store.update(c);
     delete ui.addUnit[cid];
@@ -879,7 +886,7 @@
         const c = Store.get(ds.id); if (!c) break;
         const f = ensureAddUnitState(c);
         f.faction = el.value;
-        const units = D.units.filter((u) => u.f === f.faction);
+        const units = availableUnitsForFaction(c, f.faction);
         f.name = units.length ? units[0].n : '';
         render();
         break;
