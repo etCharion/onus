@@ -18,7 +18,6 @@
   const D = window.ONUS_DATA;
   const Store = window.OnusStore;
 
-  const MAX_BATTLES = 8;
   const DEFAULT_START_BA = 1000;
 
   const C = {
@@ -179,7 +178,7 @@
     const sc = Store.scenario(c);
     const totals = Store.totals(c);
     const stats = [
-      { b: c.battles.length + '/' + MAX_BATTLES, label: 'bitev' },
+      { b: c.battles.length, label: 'bitev' },
       { b: totals.remainingCount, label: 'jednotek' },
       { b: totals.availableBA, label: 'BA k dispozici' },
       { b: totals.vpTotal, label: 'VP' },
@@ -585,9 +584,8 @@
     c.battles.forEach((b, i) => {
       chips += `<button type="button" class="camp-chip${active === i ? ' active' : ''}" data-action="setActiveBattle" data-id="${esc(c.id)}" data-value="${i}">B${i + 1}</button>`;
     });
-    if (c.battles.length < MAX_BATTLES) {
-      chips += `<button type="button" class="camp-chip add" title="Přidat bitvu" data-action="addBattle" data-id="${esc(c.id)}">+</button>`;
-    }
+    // Počet bitev v kampani není omezený — „+“ je k dispozici vždy.
+    chips += `<button type="button" class="camp-chip add" title="Přidat bitvu" data-action="addBattle" data-id="${esc(c.id)}">+</button>`;
 
     const stepBody = battlesView
       ? `<div class="camp-chips">${chips}</div>` + (active === -1 ? armyStepHtml(c, totals) : battleStepHtml(c, sc, totals, active))
@@ -782,8 +780,9 @@
 
   function doAddBattle(cid) {
     const c = Store.get(cid); if (!c) return;
-    if (c.battles.length >= MAX_BATTLES) return;
     const sc = Store.scenario(c);
+    // Předvyplní název podle scénáře, dokud v něm bitvy jsou; dál se přidávají
+    // bitvy bez názvu (počet bitev v kampani není omezený).
     const next = sc ? sc.battles[c.battles.length] : null;
     Store.addBattle(c, next ? next.n : '', next ? next.y : '');
     Store.update(c);

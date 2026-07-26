@@ -162,7 +162,7 @@
       ];
       var y = drawTitle(doc, margin, 'ONUS! — Záznam kampaně', headerLines);
 
-      var battles = (c.battles || []).slice(0, 8);
+      var battles = c.battles || [];
 
       var head = ['Frakce', 'Jednotka', 'Hodnota', 'Max', 'Výchozí ks', 'Výchozí body'];
       battles.forEach(function (b, i) { head.push('B' + (i + 1)); });
@@ -193,26 +193,37 @@
       });
 
       var foot = ['SOUČTY', '', '', '', String(totals.initialCount), String(totals.initialPoints)];
-      totals.perBattle.slice(0, 8).forEach(function (pb) {
+      totals.perBattle.forEach(function (pb) {
         foot.push(pb.fielded + ' (' + pb.fieldedPoints + ' b.) / −' + pb.lost + ' / −' + pb.damaged +
           '\n+' + pb.recruit + ' ⟳' + pb.restore + ' → ' + pb.after);
       });
       foot.push(String(totals.remainingCount));
 
+      // Počet bitev není omezený, takže sloupce musí dopočítat šířku podle
+      // stránky: bitvy si berou zbytek místa a když se ani tak nevejdou,
+      // zmenší se celá tabulka poměrně (a písmo o kus s ní).
       var battleColCount = battles.length;
-      var columnStyles = {
-        0: { cellWidth: 22 },
-        1: { cellWidth: 32, halign: 'left' },
-        2: { cellWidth: 12 },
-        3: { cellWidth: 10 },
-        4: { cellWidth: 16 },
-        5: { cellWidth: 16 },
-      };
-      var battleColWidth = 16;
+      var availW = doc.internal.pageSize.getWidth() - 2 * margin;
+      var baseW = [22, 32, 12, 10, 16, 16];
+      var remainW = 14;
+      var fixedW = baseW.reduce(function (s, w) { return s + w; }, 0) + remainW;
+      var battleColWidth = battleColCount
+        ? Math.max(9, Math.min(16, (availW - fixedW) / battleColCount))
+        : 16;
+      var totalW = fixedW + battleColWidth * battleColCount;
+      var scale = totalW > availW ? availW / totalW : 1;
+
+      var columnStyles = {};
+      baseW.forEach(function (w, i) {
+        columnStyles[i] = { cellWidth: w * scale };
+      });
+      columnStyles[1].halign = 'left';
       for (var bi = 0; bi < battleColCount; bi++) {
-        columnStyles[6 + bi] = { cellWidth: battleColWidth };
+        columnStyles[6 + bi] = { cellWidth: battleColWidth * scale };
       }
-      columnStyles[6 + battleColCount] = { cellWidth: 14 };
+      columnStyles[6 + battleColCount] = { cellWidth: remainW * scale };
+
+      var bodyFontSize = scale < 0.9 ? 6 : 7;
 
       doc.autoTable({
         startY: y,
@@ -224,17 +235,17 @@
         theme: 'grid',
         styles: {
           font: fontStyleName(doc, 'normal'), fontStyle: 'normal',
-          fontSize: 7, cellPadding: 1.3, overflow: 'linebreak',
+          fontSize: bodyFontSize, cellPadding: 1.3, overflow: 'linebreak',
           textColor: COLORS.text, lineColor: COLORS.border, lineWidth: 0.1,
           halign: 'center', valign: 'middle',
         },
         headStyles: {
           font: fontStyleName(doc, 'bold'), fontStyle: 'bold',
-          fillColor: COLORS.headBg, textColor: [255, 255, 255], fontSize: 7.5,
+          fillColor: COLORS.headBg, textColor: [255, 255, 255], fontSize: bodyFontSize + 0.5,
         },
         footStyles: {
           font: fontStyleName(doc, 'bold'), fontStyle: 'bold',
-          fillColor: COLORS.footBg, textColor: COLORS.text, fontSize: 7,
+          fillColor: COLORS.footBg, textColor: COLORS.text, fontSize: bodyFontSize,
         },
         alternateRowStyles: { fillColor: COLORS.cardBg },
         columnStyles: columnStyles,

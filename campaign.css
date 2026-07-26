@@ -681,8 +681,26 @@ body.camp-page .top-nav a {
 }
 
 .camp-table thead tr { background: var(--camp-panel); }
+
+/* Sloupec s jednotkou zůstává vidět i při dlouhé kampani (bitev může být
+   libovolně mnoho — tabulka se roluje vodorovně uvnitř svého rámu). */
 .camp-table th:first-child,
-.camp-table td:first-child { text-align: left; white-space: normal; }
+.camp-table td:first-child {
+  text-align: left;
+  white-space: normal;
+  min-width: 150px;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--camp-card);
+}
+
+.camp-table thead th:first-child {
+  z-index: 2;
+  background: var(--camp-panel);
+}
+
+.camp-table tr.totals td:first-child { background: #fbf6e6; }
 .camp-table td.unit { color: var(--camp-text); }
 .camp-table td.remain { font-weight: 700; }
 .camp-table tr.totals { background: #fbf6e6; }
