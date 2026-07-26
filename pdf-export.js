@@ -20,11 +20,11 @@
     footBg: [228, 214, 174],
   };
 
-  // Výchozí podmínky bitvy (Initial Condit. v sešitu)
+  // Výsledek bitvy (zelená / žlutá / červená tečka v logu)
   var COND_LABELS = {
-    green: 'výhoda hráče',
-    yellow: 'bez výhody',
-    red: 'výhoda soupeře',
+    green: 'vítězství',
+    yellow: 'remíza',
+    red: 'prohra',
   };
 
   // --- pomocné funkce -------------------------------------------------
@@ -164,42 +164,38 @@
 
       var battles = (c.battles || []).slice(0, 8);
 
-      var head = ['Frakce', 'Jednotka', 'Hodnota', 'Max', 'Výchozí počet', 'Výchozí body'];
+      var head = ['Frakce', 'Jednotka', 'Hodnota', 'Max', 'Výchozí ks', 'Výchozí body'];
       battles.forEach(function (b, i) { head.push('B' + (i + 1)); });
       head.push('Zbývá');
 
-      // Buňka bitvy jako v papírovém logu: nasazeno / ztráty → zbývá po bitvě,
-      // druhý řádek povýšení: V = veterán, E = elita, H = hrdinové.
-      function battleCell(b, slotId) {
-        var r = b.rows ? b.rows[slotId] : null;
-        if (!r) return '';
-        var vals = ['fielded', 'lost', 'after', 'vets', 'elite', 'heroes'].map(function (k) {
-          return r[k] == null ? null : r[k];
-        });
-        if (vals.every(function (v) { return v === null; })) return '';
-        var d = function (v) { return v === null ? '–' : String(v); };
-        var line1 = d(vals[0]) + ' / ' + d(vals[1]) + ' → ' + d(vals[2]);
-        var line2 = 'V' + d(vals[3]) + ' E' + d(vals[4]) + ' H' + d(vals[5]);
+      // Buňka bitvy podle kroků v aplikaci: nasazeno / −ztraceno / −poškozeno,
+      // druhý řádek nákupy a stav: +naverbováno ⟳obnoveno → zbývá.
+      function battleCell(states, i) {
+        var st = states[i];
+        if (!st) return '';
+        var line1 = st.fielded + ' / −' + st.lost + ' / −' + st.damaged;
+        var line2 = '+' + st.recruit + ' ⟳' + st.restore + ' → ' + st.after;
         return line1 + '\n' + line2;
       }
 
       var body = (c.units || []).map(function (u) {
         var info = safeUnitInfo(u.f, u.n);
         var initial = num(u.initial);
+        var w = store.walk(c, u.id);
         var row = [
           u.f, u.n,
           String(info.v), info.m == null ? '–' : String(info.m),
           String(initial), String(initial * info.v),
         ];
-        battles.forEach(function (b) { row.push(battleCell(b, u.id)); });
-        row.push(String(store.remaining(c, u.id)));
+        battles.forEach(function (b, i) { row.push(battleCell(w.states, i)); });
+        row.push(String(w.finalOwned) + (w.finalDamaged ? '\n(+' + w.finalDamaged + ' poš.)' : ''));
         return row;
       });
 
       var foot = ['SOUČTY', '', '', '', String(totals.initialCount), String(totals.initialPoints)];
       totals.perBattle.slice(0, 8).forEach(function (pb) {
-        foot.push(pb.fielded + ' (' + pb.fieldedPoints + ' b.) / ' + pb.lost + ' → ' + pb.after +
-          '\nV' + pb.vets + ' E' + pb.elite + ' H' + pb.heroes);
+        foot.push(pb.fielded + ' (' + pb.fieldedPoints + ' b.) / −' + pb.lost + ' / −' + pb.damaged +
+          '\n+' + pb.recruit + ' ⟳' + pb.restore + ' → ' + pb.after);
       });
       foot.push(String(totals.remainingCount));
 
@@ -257,13 +253,13 @@
       doc.setFontSize(8);
       doc.setTextColor(COLORS.textMuted[0], COLORS.textMuted[1], COLORS.textMuted[2]);
       doc.text(
-        'Sloupce bitev: nasazeno / ztráty → zbývá po bitvě (Condit.); V = povýšeno na veterána, E = na elitu, H = hrdinové.',
+        'Sloupce bitev: nasazeno / −ztraceno / −poškozeno; +naverbováno (plná cena) ⟳obnoveno (½ ceny) → zbývá po bitvě.',
         margin, y
       );
       y += 7;
 
-      // blok výsledků bitev + VP
-      var neededForBlock = 6 + (c.battles || []).length * 5 + 6;
+      // blok výsledků bitev + VP / BA
+      var neededForBlock = 6 + (c.battles || []).length * 5 + 12;
       y = ensureSpace(doc, y, neededForBlock, margin);
       setFont(doc, 'bold');
       doc.setFontSize(10);
@@ -276,20 +272,32 @@
       (c.battles || []).forEach(function (b, i) {
         y = ensureSpace(doc, y, 5, margin);
         var cond = COND_LABELS[b.cond] || '–';
-        var vp = (b.vp == null) ? '–' : String(b.vp);
         var line = 'B' + (i + 1) + ': ' + (b.name || '(bez názvu)') +
           (b.year ? ' (' + b.year + ')' : '') +
-          ' — výchozí podmínky: ' + cond + ', VP: ' + vp;
+          ' — výsledek: ' + cond + ', VP: ' + num(b.vp) + ', BA za bitvu: ' + num(b.ba);
         doc.text(line, margin, y);
         y += 5;
       });
 
       y += 1;
-      y = ensureSpace(doc, y, 6, margin);
+      y = ensureSpace(doc, y, 12, margin);
       setFont(doc, 'bold');
       doc.setFontSize(10);
+      doc.setTextColor(COLORS.green[0], COLORS.green[1], COLORS.green[2]);
+      doc.text(
+        'Body armády: výchozí ' + totals.startBA + ' + získané ' + totals.earnedBA +
+        ' − utracené ' + totals.spentBA + ' = k dispozici ' + totals.availableBA,
+        margin, y
+      );
+      y += 6;
       doc.setTextColor(COLORS.gold[0], COLORS.gold[1], COLORS.gold[2]);
-      doc.text('Celkem VP: ' + totals.vpTotal, margin, y);
+      doc.text(
+        'Celkem VP: ' + totals.vpTotal +
+        '        Povýšení: veteráni ' + totals.vetsTotal + ', elitní ' + totals.eliteTotal +
+        ', hrdinové ' + totals.heroesTotal +
+        '        Poškozených ks: ' + totals.damagedCount,
+        margin, y
+      );
 
       var filename = 'onus-kampan-' + slugify(c.name || scenarioName) + '.pdf';
       doc.save(filename);
