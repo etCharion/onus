@@ -1,555 +1,830 @@
-/* ONUS! — Správa kampaní: vlastní styly Agenta A (campaign.js).
-   Ladí s style.css (kalkulačka) — stejné barvy, karty, tab/choice tlačítka. */
+/* ONUS! — Kampaně a bitvy: vzhled sekce kampaní (campaign.js).
+   Navazuje na paletu style.css (pergamen + zlatá/červená/zelená), ale sekce
+   kampaní běží v širokém layoutu (1160 px) s kartami a mincovými krokovači.
+   Stejná vizuální logika platí i pro krok „bitva“. */
 
-/* --- obecné ovládací prvky uvnitř karet --------------------------------- */
+:root {
+  --camp-text: #2a2018;
+  --camp-muted: #6b5c46;
+  --camp-dark: #4a3418;
+  --camp-gold: #9c7327;
+  --camp-gold-soft: #ddcda0;
+  --camp-red: #8c2a22;
+  --camp-green: #2f5d3a;
+  --camp-card: #fffdf8;
+  --camp-card-border: #e4d6ae;
+  --camp-panel: #f6ecd4;
+  --camp-hairline: #f0e6cc;
+  --camp-hint: #9a8a68;
+}
 
-.field select,
-.field input[type="text"],
-.field input[type="number"] {
+/* --- horní navigace na široké stránce ------------------------------------ */
+
+body.camp-page .top-nav {
+  max-width: 1160px;
+  padding: 18px 20px 0;
+  gap: 8px;
+}
+
+body.camp-page .top-nav a {
+  flex: 0 0 auto;
+  padding: 9px 16px;
+}
+
+/* --- široký rám sekce ----------------------------------------------------- */
+
+.camp-wrap {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+.camp-header {
+  padding-top: 18px;
+  padding-bottom: 6px;
+}
+
+.camp-header h1 {
+  font-size: 24px;
+  margin: 0 0 6px;
+  letter-spacing: .02em;
+}
+
+.camp-header .divider {
+  max-width: 220px;
+}
+
+.camp-header p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--camp-muted);
+  margin: 0;
+  max-width: 640px;
+}
+
+.camp-back {
+  margin-top: 12px;
+  background: none;
+  border: none;
+  color: var(--camp-gold);
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}
+
+.camp-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 14px;
+}
+
+.camp-tabs .camp-tab {
+  flex: 0 0 auto;
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 4px;
+  border: 2px solid var(--camp-gold-soft);
+  background: #fff;
+  color: var(--camp-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  cursor: pointer;
+}
+
+.camp-tabs .camp-tab.active {
+  background: var(--camp-gold);
+  border-color: var(--camp-gold);
+  color: #fff;
+}
+
+.camp-body {
+  padding-top: 14px;
+  padding-bottom: 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Stavitel armády si drží svůj úzký sloupec (style.css / army-builder.css),
+   ale zarovnaný doleva pod hlavičku, ne na střed široké stránky. */
+.camp-body > .content {
+  margin: 0;
+  padding: 0;
+}
+
+/* --- karty --------------------------------------------------------------- */
+
+.camp-card {
+  background: var(--camp-card);
+  border: 1px solid var(--camp-card-border);
+  border-radius: 6px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+.camp-card.gold { border-top: 3px solid var(--camp-gold); }
+.camp-card.red { border-top: 3px solid var(--camp-red); }
+.camp-card.green { border-top: 3px solid var(--camp-green); }
+
+.camp-card h3 {
+  margin: 0;
+  font-family: ui-serif, Georgia, serif;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--camp-dark);
+}
+
+.camp-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.camp-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--camp-muted);
+  line-height: 1.5;
+}
+
+.camp-note.sm { font-size: 11px; }
+.camp-note.strong { color: var(--camp-dark); font-size: 12.5px; }
+
+/* --- tlačítka ------------------------------------------------------------ */
+
+.camp-btn {
+  height: 42px;
+  padding: 0 18px;
+  border-radius: 4px;
+  border: 2px solid var(--camp-gold-soft);
+  background: #fff;
+  color: var(--camp-muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.camp-btn.gold { border-color: var(--camp-gold); background: var(--camp-gold); color: #fff; }
+.camp-btn.green { border-color: var(--camp-green); background: var(--camp-green); color: #fff; }
+.camp-btn.green-outline { border-color: var(--camp-green); background: #fff; color: var(--camp-green); }
+.camp-btn.danger { color: var(--camp-red); }
+.camp-btn.sm { height: 36px; padding: 0 16px; }
+.camp-btn.grow { flex: 1; }
+.camp-btn.start { align-self: flex-start; }
+.camp-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.camp-linkbtn {
+  background: none;
+  border: none;
+  color: var(--camp-red);
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 6px 0;
+  font-family: inherit;
+}
+
+/* --- formulářová pole ---------------------------------------------------- */
+
+.camp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.camp-field > span.camp-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--camp-dark);
+}
+
+.camp-field input[type="text"],
+.camp-field input[type="number"],
+.camp-field select,
+.camp-input {
   font-family: inherit;
   font-size: 13px;
-  color: #2a2018;
+  color: var(--camp-text);
   background: #fff;
-  border: 2px solid #ddcda0;
+  border: 2px solid var(--camp-gold-soft);
   border-radius: 4px;
-  padding: 8px 10px;
-  height: 38px;
-  box-sizing: border-box;
+  padding: 9px 10px;
   width: 100%;
+  box-sizing: border-box;
 }
 
-.field select:focus,
-.field input:focus {
+.camp-field input:focus,
+.camp-field select:focus,
+.camp-input:focus {
   outline: none;
-  border-color: #9c7327;
+  border-color: var(--camp-gold);
 }
 
-.choice-btn:disabled {
-  opacity: .4;
-  cursor: not-allowed;
-}
+.camp-input.narrow { width: 100px; }
+.camp-input.mid { width: 160px; }
+.camp-input.sm { font-size: 12px; padding: 7px 8px; }
 
-.choice-btn.small {
-  flex: none;
-  min-width: 40px;
-  height: 36px;
-  padding: 0 4px;
+.camp-hint {
+  font-size: 11px;
+  color: var(--camp-muted);
 }
 
 /* --- seznam kampaní ------------------------------------------------------ */
 
-.campaign-card-head {
+.camp-list {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 14px;
 }
 
-.campaign-card-head h3 {
-  font-size: 16px;
+.camp-list .camp-card {
+  flex: 1 1 320px;
+  max-width: 420px;
+}
+
+.camp-list h3 {
+  font-family: ui-serif, Georgia, serif;
+  font-size: 17px;
   text-transform: none;
   letter-spacing: 0;
-  color: #2a2018;
+  color: var(--camp-text);
 }
 
-.campaign-card-stats {
+.camp-card-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 6px;
   text-align: center;
-  border-top: 1px solid #f0e6cc;
-  border-bottom: 1px solid #f0e6cc;
-  padding: 8px 0;
+  border-top: 1px solid var(--camp-hairline);
+  border-bottom: 1px solid var(--camp-hairline);
+  padding: 10px 0;
 }
 
-.campaign-card-stats b {
-  display: block;
-  font-size: 15px;
-  color: #4a3418;
-}
-
-.campaign-card-stats span {
-  display: block;
-  font-size: 9px;
-  line-height: 1.3;
-  color: #6b5c46;
-  text-transform: uppercase;
-  letter-spacing: .03em;
-}
-
-.campaign-card-actions {
-  display: flex;
-  gap: 8px;
-}
-
-/* --- detail kampaně: souhrn ---------------------------------------------- */
-
-.campaign-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px 6px;
-}
-
-@media (min-width: 420px) {
-  .campaign-summary-grid { grid-template-columns: repeat(5, 1fr); }
-}
-
-.campaign-summary-grid > div {
-  text-align: center;
-  background: #fbf6e6;
-  border: 1px solid #f0e6cc;
-  border-radius: 4px;
-  padding: 8px 4px;
-}
-
-.campaign-summary-grid b {
+.camp-card-stats b {
   display: block;
   font-size: 16px;
-  color: #4a3418;
+  color: var(--camp-dark);
+  font-family: ui-serif, Georgia, serif;
 }
 
-.campaign-summary-grid span {
+.camp-card-stats span {
   display: block;
   font-size: 9px;
-  color: #6b5c46;
+  color: var(--camp-muted);
   text-transform: uppercase;
   letter-spacing: .03em;
+  line-height: 1.3;
   margin-top: 2px;
 }
 
-.campaign-actions {
+.camp-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* --- souhrn kampaně ------------------------------------------------------ */
+
+.camp-summary {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.campaign-actions .choice-btn {
-  flex: 1 1 140px;
-}
-
-/* --- log tabulka (hlavní prvek) ------------------------------------------ */
-
-.log-section {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px 4px;
-  box-sizing: border-box;
-}
-
-.log-card {
-  max-width: none;
-}
-
-.log-card h3 {
-  margin-bottom: 2px;
-}
-
-.log-table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  border: 1px solid #e4d6ae;
-  border-radius: 4px;
-}
-
-.log-table {
-  border-collapse: collapse;
-  font-size: 11px;
-  width: 100%;
-  min-width: 640px;
-}
-
-.log-table th,
-.log-table td {
-  border: 1px solid #e4d6ae;
-  padding: 4px 5px;
-  vertical-align: middle;
-  background: #fffdf8;
-}
-
-.log-table thead th {
-  background: #f6ecd4;
-  color: #4a3418;
-  font-weight: 700;
+.camp-summary > div {
+  flex: 1 1 110px;
   text-align: center;
-  white-space: nowrap;
+  border: 1px solid var(--camp-hairline);
+  border-radius: 6px;
+  padding: 12px 8px;
 }
 
-.log-table .sticky-col {
-  position: sticky;
-  left: 0;
-  z-index: 3;
-  background: #fffdf8;
-  text-align: left;
-  min-width: 150px;
-  max-width: 190px;
+.camp-summary b {
+  display: block;
+  font-size: 20px;
+  font-family: ui-serif, Georgia, serif;
 }
 
-.log-table thead .sticky-col {
-  z-index: 4;
-  background: #f6ecd4;
+.camp-summary span {
+  display: block;
+  font-size: 10px;
+  color: var(--camp-muted);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  margin-top: 3px;
 }
 
-.log-th-unit {
-  min-width: 150px;
-}
-
-.log-table td.log-td-num {
-  text-align: center;
-  min-width: 44px;
-  white-space: nowrap;
-}
-
-.log-td-unit {
+.camp-summary-actions {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* --- krokové čipy (Vaše armáda / B1..B8 / +) ----------------------------- */
+
+.camp-chips {
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
-.log-unit-name {
-  font-size: 11.5px;
-  line-height: 1.3;
-}
-
-.log-unit-remove,
-.log-battle-remove {
-  border: none;
-  background: none;
-  color: #8c2a22;
-  font-size: 13px;
-  line-height: 1;
+.camp-chip {
+  min-width: 46px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 20px;
+  border: 2px solid var(--camp-gold-soft);
+  background: #fff;
+  color: var(--camp-muted);
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
-  padding: 2px 4px;
-  flex-shrink: 0;
-}
-
-.log-unit-remove:hover,
-.log-battle-remove:hover {
-  color: #6e2019;
-}
-
-.log-td-initial {
-  min-width: 92px;
-}
-
-.log-td-initial.log-td-over {
-  background: #f4ded9;
-}
-
-.log-input {
   font-family: inherit;
-  font-size: 11px;
-  border: 1px solid #ddcda0;
-  border-radius: 3px;
-  padding: 3px 2px;
-  text-align: center;
-  box-sizing: border-box;
 }
 
-.log-input:focus {
-  outline: none;
-  border-color: #9c7327;
+.camp-chip.active {
+  border-color: var(--camp-gold);
+  background: var(--camp-gold);
+  color: #fff;
 }
 
-.log-input-initial {
-  width: 52px;
+.camp-chip.add {
+  border-color: var(--camp-green);
+  color: var(--camp-green);
 }
 
-.log-points {
-  display: block;
-  font-size: 9.5px;
-  color: #6b5c46;
-  margin-top: 2px;
+/* --- panel kroku (BA rozpočet / hlavička bitvy) -------------------------- */
+
+.camp-bar {
+  background: var(--camp-panel);
+  border: 1px solid var(--camp-card-border);
+  border-radius: 6px;
+  padding: 12px 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: center;
 }
 
-.log-th-battle {
-  min-width: 130px;
-  vertical-align: top;
+.camp-bar.battle {
+  padding: 12px;
+  gap: 14px;
+  align-items: flex-end;
 }
 
-.log-battle-head {
+.camp-bar-item {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  margin-bottom: 4px;
-}
-
-.log-select,
-.log-battle-select {
-  font-family: inherit;
-  font-size: 10.5px;
-  border: 1px solid #ddcda0;
-  border-radius: 3px;
-  padding: 2px;
-  width: 100%;
-  box-sizing: border-box;
-  background: #fff;
-}
-
-.log-battle-year {
-  width: 100%;
-}
-
-.log-battle-cond {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  justify-content: center;
-  margin-bottom: 4px;
-}
-
-.log-cond-label {
-  font-size: 9px;
-  color: #6b5c46;
-  font-weight: 400;
-}
-
-.log-cond-box {
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--cond-color);
-  background: #fff;
-  border-radius: 3px;
-  cursor: pointer;
-  padding: 0;
-  color: #fff;
-  font-size: 11px;
-  line-height: 1;
-}
-
-.log-cond-box.active {
-  background: var(--cond-color);
-}
-
-.log-result-btn {
-  flex: 1;
-  height: 26px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 0;
-  min-width: 0;
-}
-
-.log-battle-vp {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  font-size: 10px;
-  color: #6b5c46;
-  margin-bottom: 2px;
-}
-
-.log-battle-vp-input {
-  width: 48px;
-}
-
-.log-td-battle {
-  min-width: 130px;
-}
-
-.log-cell-inputs {
-  display: flex;
-  gap: 3px;
-  justify-content: center;
-  margin-bottom: 3px;
-}
-
-.log-cell-inputs .log-input {
-  width: 40px;
-}
-
-/* barevná pole povýšení jako v sešitu: žlutá = veterán, šedá = elita,
-   zelená = hrdinové; Zb = zbývá po bitvě (Condit.) */
-.log-input-vet {
-  background: #f9efc5;
-  border-color: #cbb45a;
-}
-
-.log-input-elite {
-  background: #e9e9e9;
-  border-color: #b0b0b0;
-}
-
-.log-input-hero {
-  background: #e2ead9;
-  border-color: #5f9a6c;
-}
-
-.log-input-after {
-  font-weight: 700;
-}
-
-.log-td-remain {
-  font-size: 10.5px;
-  min-width: 74px;
-}
-
-.log-sum-row td {
-  background: #f6ecd4;
-  font-weight: 700;
-  text-align: center;
-  font-size: 10.5px;
-}
-
-.log-sum-row .sticky-col {
-  background: #f6ecd4;
-  text-align: left;
-}
-
-.log-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 10px;
-  flex-wrap: wrap;
-}
-
-.log-toolbar .choice-btn {
-  flex: none;
-  min-width: 160px;
-}
-
-.log-empty-row td {
-  text-align: center;
-  color: #6b5c46;
-  padding: 16px 8px;
-}
-
-.log-battle-legend {
-  font-size: 9px;
-  color: #6b5c46;
-  text-align: center;
-  margin-top: 2px;
-  font-weight: 400;
-}
-
-.log-cell-inputs .log-input {
-  width: 34px;
-}
-
-/* --- přepínač Tabulka / Po bitvách + mobilní pohled --- */
-
-.log-view-toggle {
-  display: flex;
-  gap: 6px;
-  max-width: 300px;
-}
-
-.log-view-toggle .choice-btn {
-  height: 36px;
-}
-
-.log-battle-chips {
-  display: flex;
-  flex-wrap: wrap;
   gap: 5px;
 }
 
-.log-battle-chips .choice-btn {
-  flex: none;
-  min-width: 52px;
-  height: 34px;
+.camp-bar-item.grow { flex: 1 1 220px; }
+
+.camp-bar-label {
   font-size: 11px;
-  padding: 0 10px;
+  color: var(--camp-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  font-weight: 700;
 }
 
-.log-mob-battle-controls {
-  background: #fbf6e6;
-  border: 1px solid #f0e6cc;
-  border-radius: 4px;
-  padding: 10px;
+.camp-bar-label.green { color: var(--camp-green); }
+.camp-bar-label.red { color: var(--camp-red); }
+
+.camp-bar-value {
+  font-size: 18px;
+  font-family: ui-serif, Georgia, serif;
+  color: var(--camp-dark);
+}
+
+.camp-bar-value.green { color: var(--camp-green); }
+.camp-bar-value.red { color: var(--camp-red); }
+
+/* výsledek bitvy — tokeny vítězství / remíza / prohra */
+
+.camp-conds {
+  display: flex;
+  gap: 10px;
+}
+
+.camp-cond {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  max-width: 420px;
+  align-items: center;
+  gap: 3px;
 }
 
-.log-mob-battle-controls .log-battle-select,
-.log-mob-battle-controls .log-input {
-  font-size: 12px;
-  padding: 6px;
-}
-
-.log-mob-battle-controls .log-result-btn {
+.camp-cond button {
+  width: 34px;
   height: 34px;
+  border-radius: 50%;
+  border: 2px solid var(--cond-color);
+  background: #fff;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-family: inherit;
 }
 
-.log-mob-list {
+.camp-cond.on button {
+  background: var(--cond-color);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5), 0 2px 4px rgba(42, 32, 24, 0.3);
+}
+
+.camp-cond span {
+  font-size: 9px;
+  color: var(--camp-hint);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  font-weight: 700;
+}
+
+.camp-cond.on span { color: var(--cond-color); }
+
+.camp-vp-note {
+  font-size: 9.5px;
+  line-height: 1.3;
+  max-width: 130px;
+  color: var(--camp-hint);
+}
+
+.camp-vp-note.auto { color: var(--camp-green); }
+
+.camp-input.vp-auto {
+  background: #eef4ec;
+  border-color: var(--camp-green);
+  color: var(--camp-green);
+}
+
+/* --- karty jednotek ------------------------------------------------------ */
+
+.camp-units {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.camp-unit {
+  border: 1px solid #ecdfc0;
+  border-radius: 6px;
+  padding: 12px;
+  background: var(--camp-card);
   display: flex;
   flex-direction: column;
+  gap: 10px;
+  box-sizing: border-box;
 }
 
-.log-mob-row {
-  border-bottom: 1px solid #f0e6cc;
-  padding: 8px 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
+.camp-unit.army { flex: 1 1 260px; max-width: 360px; }
+.camp-unit.battle { flex: 1 1 300px; max-width: 420px; }
+.camp-unit.over { background: #f7e4de; }
 
-.log-mob-row.log-mob-over {
-  background: #f4ded9;
-}
-
-.log-mob-head {
+.camp-unit-head {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   gap: 8px;
-}
-
-.log-mob-meta {
-  font-size: 10.5px;
-  color: #6b5c46;
-  white-space: nowrap;
-}
-
-.log-mob-inputs {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   flex-wrap: wrap;
 }
 
-.log-mob-inputs label {
+.camp-unit-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--camp-text);
+  line-height: 1.3;
+}
+
+.camp-unit-state {
+  font-size: 11px;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.camp-unit-remove {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  color: var(--camp-red);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.camp-unit-meta {
+  font-size: 11px;
+  color: var(--camp-muted);
+  line-height: 1.4;
+}
+
+.camp-unit-promo {
+  font-size: 10.5px;
+  color: var(--camp-muted);
+  line-height: 1.4;
+}
+
+.camp-unit-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: #6b5c46;
+  gap: 14px;
+  flex-wrap: wrap;
 }
 
-.log-mob-inputs .log-input {
-  width: 56px;
+.camp-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px 6px;
+  align-items: start;
+}
+
+/* --- mincový krokovač ---------------------------------------------------- */
+
+.camp-step {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+}
+
+.camp-step-label {
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+  color: var(--camp-muted);
+}
+
+.camp-step.lg .camp-step-label {
+  font-size: 10px;
+  letter-spacing: .05em;
+}
+
+.camp-step-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.camp-step.lg .camp-step-controls { gap: 5px; }
+
+.camp-step-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--camp-gold-soft);
+  background: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  font-family: inherit;
+}
+
+.camp-step.lg .camp-step-btn { width: 28px; height: 28px; font-size: 17px; }
+
+.camp-step-btn.dec { color: var(--camp-red); }
+.camp-step-btn.inc { color: var(--camp-green); }
+.camp-step-btn.off { opacity: .3; cursor: default; }
+
+.camp-coin {
+  width: 32px;
   height: 32px;
+  border-radius: 50%;
+  font-family: ui-serif, Georgia, serif;
   font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fbf6e6;
+  border: 1px solid var(--camp-gold-soft);
+  color: #b3a077;
 }
 
-.log-mob-inputs-battle .log-cell-inputs {
+.camp-step.lg .camp-coin { width: 34px; height: 34px; font-size: 14px; }
+
+.camp-coin.pos {
+  background: linear-gradient(160deg, #e9d8a8, #c8a24e);
+  border-color: #a9793f;
+  color: var(--camp-dark);
+  box-shadow: inset 0 1px 2px rgba(42, 32, 24, 0.22);
+}
+
+.camp-coin.neg {
+  background: linear-gradient(160deg, #dfa79e, #a8433a);
+  border-color: var(--camp-red);
+  color: #fff;
+  box-shadow: inset 0 1px 2px rgba(42, 32, 24, 0.22);
+}
+
+.camp-coin.auto {
+  width: 38px;
+  height: 38px;
+  border-width: 2px;
+  font-size: 15px;
+}
+
+.camp-step-hint {
+  font-size: 9px;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--camp-hint);
+}
+
+.camp-step-hint.warn { color: var(--camp-red); }
+.camp-step-hint.auto { color: #b39a5e; }
+
+/* --- přehledová tabulka -------------------------------------------------- */
+
+.camp-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--camp-card-border);
+  border-radius: 6px;
+}
+
+.camp-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 520px;
+  font-size: 11px;
+}
+
+.camp-table th,
+.camp-table td {
+  border: 1px solid var(--camp-card-border);
+  padding: 6px 8px;
+  color: var(--camp-dark);
+  white-space: nowrap;
+  text-align: center;
+}
+
+.camp-table thead tr { background: var(--camp-panel); }
+
+/* Sloupec s jednotkou zůstává vidět i při dlouhé kampani (bitev může být
+   libovolně mnoho — tabulka se roluje vodorovně uvnitř svého rámu). */
+.camp-table th:first-child,
+.camp-table td:first-child {
+  text-align: left;
+  white-space: normal;
+  min-width: 150px;
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--camp-card);
+}
+
+.camp-table thead th:first-child {
+  z-index: 2;
+  background: var(--camp-panel);
+}
+
+.camp-table tr.totals td:first-child { background: #fbf6e6; }
+.camp-table td.unit { color: var(--camp-text); }
+.camp-table td.remain { font-weight: 700; }
+.camp-table tr.totals { background: #fbf6e6; }
+.camp-table tr.totals td:first-child { font-weight: 700; }
+
+/* --- nástroje složení armády --------------------------------------------- */
+
+.camp-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.camp-tools .camp-card.add-unit { flex: 1 1 300px; max-width: 400px; }
+.camp-tools .camp-card.recommended { flex: 1 1 320px; max-width: 460px; }
+
+.camp-statbox {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--camp-panel);
+  border: 1px solid var(--camp-card-border);
+  border-radius: 5px;
+  padding: 9px 10px;
+}
+
+.camp-statbox > span {
+  font-size: 10px;
+  color: var(--camp-muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-weight: 700;
+}
+
+.camp-statgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(52px, 1fr));
+  gap: 6px 4px;
+}
+
+.camp-statgrid > div { text-align: center; }
+
+.camp-statgrid b {
+  display: block;
+  font-family: ui-serif, Georgia, serif;
+  font-size: 14px;
+  color: var(--camp-dark);
+  line-height: 1.1;
+}
+
+.camp-statgrid span {
+  display: block;
+  font-size: 8.5px;
+  color: var(--camp-muted);
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  margin-top: 2px;
+  line-height: 1.2;
+}
+
+.camp-rec-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.camp-rec-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+  border: 1px solid var(--camp-hairline);
+  border-radius: 4px;
+  padding: 6px 8px;
+  background: var(--camp-card);
+}
+
+.camp-rec-row.owned { background: #f2f6ee; }
+
+.camp-rec-row span {
+  font-size: 12px;
+  color: var(--camp-text);
+  line-height: 1.3;
+}
+
+.camp-rec-row button {
+  flex: 0 0 auto;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 4px;
+  border: 2px solid var(--camp-gold);
+  background: #fff;
+  color: var(--camp-muted);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.camp-rec-row button.can { background: var(--camp-gold); color: #fff; }
+.camp-rec-row button:disabled { opacity: .4; cursor: not-allowed; }
+
+/* --- sides / volby ------------------------------------------------------- */
+
+.camp-choices {
   display: flex;
   gap: 6px;
-  margin-bottom: 4px;
-  justify-content: flex-start;
+  flex-wrap: wrap;
 }
 
-.log-mob-inputs-battle .log-input {
+.camp-choices .camp-btn {
   flex: 1;
-  max-width: 90px;
-  height: 34px;
-  font-size: 13px;
+  min-width: 120px;
+  font-weight: 600;
 }
 
-.log-mob-sum {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: #4a3418;
-}
+/* --- responzivní doladění ------------------------------------------------ */
 
-/* --- responzivní doladění --- */
-
-@media (max-width: 480px) {
-  .log-section { padding: 0 10px 4px; }
-  .log-table { font-size: 10px; }
-  .log-th-unit, .log-table .sticky-col { min-width: 120px; }
+@media (max-width: 560px) {
+  .camp-wrap { padding: 0 12px; }
+  .camp-header h1 { font-size: 20px; }
+  .camp-unit.army,
+  .camp-unit.battle { max-width: none; }
+  .camp-steps { grid-template-columns: repeat(2, 1fr); }
+  .camp-list .camp-card { max-width: none; }
 }
