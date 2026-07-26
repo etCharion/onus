@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ONUS!">
+  <title>ONUS! — římské scutum</title>
+  <defs>
+    <clipPath id="field">
+      <path d="M14.2 11.8Q32 8.2 49.8 11.8V52.2Q32 55.8 14.2 52.2Z"/>
+    </clipPath>
+  </defs>
+  <path d="M10 8Q32 1.5 54 8v48Q32 62.5 10 56Z" fill="#9c7327"/>
+  <path d="M14.2 11.8Q32 8.2 49.8 11.8V52.2Q32 55.8 14.2 52.2Z" fill="#8c2a22"/>
+  <g clip-path="url(#field)" fill="#9c7327">
+    <path d="M15 32 32 25.5 49 32 32 38.5Z"/>
+    <rect x="30.6" y="11" width="2.8" height="9"/>
+    <rect x="30.6" y="44" width="2.8" height="9"/>
+  </g>
+  <ellipse cx="32" cy="32" rx="9.5" ry="10.5" fill="#9c7327"/>
+  <ellipse cx="32" cy="32" rx="7.6" ry="8.5" fill="#c9a24e"/>
+  <ellipse cx="32" cy="32" rx="3.4" ry="3.8" fill="#2a2018"/>
+</svg>
